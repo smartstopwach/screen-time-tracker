@@ -128,6 +128,22 @@
       deltaEl.textContent = '';
     }
 
+    // ── lectures & video time (playing vs paused-on-page) ──
+    var dayEntry = (got.days && got.days[keyOf()]) || {};
+    var vidMap = dayEntry.video || {};
+    var vidSecs = 0;
+    for (var vd in vidMap) vidSecs += vidMap[vd];
+    if (vidSecs >= 60) {
+      var vpMap = dayEntry.vpause || {};
+      var vpSecs = 0;
+      for (var vp in vpMap) vpSecs += vpMap[vp];
+      $('vidRow').style.display = '';
+      $('vidText').innerHTML = '<b>' + fmtTime(vidSecs) + '</b> of lectures &amp; video today' +
+        (vpSecs >= 60 ? ' · ' + fmtTime(vpSecs) + ' paused' : '');
+    } else {
+      $('vidRow').style.display = 'none';
+    }
+
     // ── category chips ──
     var byCat = {};
     entries.forEach(function (e) {

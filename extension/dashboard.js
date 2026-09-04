@@ -33,6 +33,7 @@
     trendDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 7 7"/><path d="M14 16h6v-6"/></svg>',
     target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
     globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="4.5" ry="9"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5v14l12-7z"/></svg>',
   };
   var TITLES = { overview: 'Overview', sites: 'Sites', insights: 'Insights', settings: 'Settings' };
 
@@ -86,6 +87,17 @@
   function dayHours(key) {
     var d = days[key];
     return (d && d.hours) ? d.hours : new Array(24).fill(0);
+  }
+
+  // v3.2 · video (lecture) time: playing seconds + paused-on-page seconds
+  function dayVideo(key) {
+    var d = days[key];
+    return (d && d.video) ? d.video : {};
+  }
+
+  function dayVpause(key) {
+    var d = days[key];
+    return (d && d.vpause) ? d.vpause : {};
   }
 
   function sumSites(obj) {
@@ -460,12 +472,24 @@
         fmtCell(r.today) + ' / ' + lim + 'm today</span>'
       : '<span class="limit-tag">No daily limit</span>';
 
+    var vWeek = 0, vpWeek = 0;
+    dateKeys(7).forEach(function (k) {
+      vWeek += (dayVideo(k)[r.d] || 0);
+      vpWeek += (dayVpause(k)[r.d] || 0);
+    });
+    var vidMeta = vWeek >= 60
+      ? '<div><label>Video · last 7 days</label><span class="limit-tag">' +
+        'played ' + fmtTime(vWeek) + (vpWeek >= 60 ? ' · paused ' + fmtTime(vpWeek) : '') +
+        '</span></div>'
+      : '';
+
     return '<div class="srow-detail"><div class="detail-grid">' +
       '<div class="detail-bars"><div class="db-title">Last 14 days</div>' +
       '<div class="db-bars">' + bars + '</div><div class="db-labs">' + labs + '</div></div>' +
       '<div class="detail-meta">' +
       '<div><label>Category</label>' + catCtl + '</div>' +
       '<div><label>Daily limit</label>' + limitTag + '</div>' +
+      vidMeta +
       '</div></div></div>';
   }
 
@@ -505,8 +529,14 @@
     var rowHtml = shown.map(function (r) {
       var cat = classifySite(r.d, settings.categoryOverrides);
       var w = maxToday > 0 ? Math.max(2, Math.round((r.today / maxToday) * 100)) : 2;
+      var vToday = dayVideo(key)[r.d] || 0;
+      var vBadge = vToday >= 60
+        ? '<span class="vbadge" title="Video played today: ' + fmtTime(vToday) +
+          ' · Paused on page: ' + fmtTime(dayVpause(key)[r.d] || 0) + '">' +
+          ICONS.play + fmtTime(vToday) + '</span>'
+        : '';
       return '<div class="srow" data-domain="' + esc(r.d) + '">' +
-        '<div class="sitecell">' + faviconHTML(r.d) + '<div class="scell">' + r.d + '</div></div>' +
+        '<div class="sitecell">' + faviconHTML(r.d) + '<div class="scell">' + r.d + '</div>' + vBadge + '</div>' +
         '<div>' + catChip(cat) + '</div>' +
         '<div class="scell num">' + fmtCell(r.today) + '</div>' +
         '<div class="scell num">' + fmtCell(r.week) + '</div>' +
@@ -603,6 +633,25 @@
     if (thisWeek > 0) {
       cards.push(['zap', 'Productivity score', Math.round((prodSecs / thisWeek) * 100) + '%',
         'share of Work + Learning in this week\u2019s screen time']);
+    }
+
+    // lectures & video: time players spent playing vs paused on page
+    var vid7 = {}, vp7 = {};
+    k7.forEach(function (k) {
+      var v = dayVideo(k), p = dayVpause(k);
+      for (var vd in v) vid7[vd] = (vid7[vd] || 0) + v[vd];
+      for (var pd in p) vp7[pd] = (vp7[pd] || 0) + p[pd];
+    });
+    var vidTotal = 0, vidTop = null;
+    for (var vt in vid7) {
+      vidTotal += vid7[vt];
+      if (!vidTop || vid7[vt] > vid7[vidTop]) vidTop = vt;
+    }
+    if (vidTotal >= 60) {
+      var vpTotal = 0;
+      for (var vt2 in vp7) vpTotal += vp7[vt2];
+      cards.push(['play', 'Lectures & video time', fmtTime(vidTotal),
+        (vidTop ? esc(vidTop) + ' leads · ' : '') + fmtTime(vpTotal) + ' paused on page (7 days)']);
     }
 
     // 3 · peak hour

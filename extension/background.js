@@ -20,6 +20,11 @@ const DEFAULT_SETTINGS = {
 let state = null;
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 
+// ── video / lecture tracking (in-memory; rebuilt from content-script beats) ──
+const VID_STALE_MS = 45000;  // no heartbeat for this long => don't trust the gap
+let vidPlaying = {};         // tabId -> { d: domain, since: ts } while a video plays
+let vidState = {};           // tabId -> 'play' | 'pause' | 'none' (latest report)
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function todayKey(d = new Date()) {
@@ -51,7 +56,7 @@ function fmtShort(secs) {
 }
 
 function newDay() {
-  return { sites: {}, hours: new Array(24).fill(0) };
+  return { sites: {}, hours: new Array(24).fill(0), video: {}, vpause: {} };
 }
 
 // makes sure a day entry is in v2 shape { sites, hours } (migrates v1 on the fly)
@@ -64,6 +69,8 @@ function ensureDay(key) {
   if (!Array.isArray(day.hours) || day.hours.length !== 24) {
     day.hours = new Array(24).fill(0);
   }
+  if (!day.video || typeof day.video !== 'object') day.video = {};   // v3.2
+  if (!day.vpause || typeof day.vpause !== 'object') day.vpause = {}; // v3.2
   return day;
 }
 
@@ -129,11 +136,56 @@ function addTime(domain, secs, startTs, endTs) {
   if (startTs && endTs && endTs > startTs) addHoursSplit(startTs, endTs);
 }
 
+// video (lecture) seconds: time the site's player actually spent playing
+function addVideo(domain, secs) {
+  if (!domain || !(secs > 0)) return;
+  const entry = ensureDay(todayKey());
+  entry.video[domain] = (entry.video[domain] || 0) + secs;
+}
+
+// paused-on-page seconds: user is on the page while the lecture is paused
+function addVpause(domain, secs) {
+  if (!domain || !(secs > 0)) return;
+  const entry = ensureDay(todayKey());
+  entry.vpause[domain] = (entry.vpause[domain] || 0) + secs;
+}
+
 async function commit(now = Date.now()) {
   const cur = state.current;
   state.current = null;
   if (!cur) return;
-  addTime(cur.domain, (now - cur.start) / 1000, cur.start, now);
+  const secs = (now - cur.start) / 1000;
+  addTime(cur.domain, secs, cur.start, now);
+  // the active tab had a paused lecture the whole time? count it separately
+  if (cur.tabId !== undefined && vidState[cur.tabId] === 'pause') {
+    addVpause(cur.domain, secs);
+  }
+}
+
+// a content script reported its page's video state
+function handleVid(tabId, domain, s) {
+  const now = Date.now();
+  const prev = vidPlaying[tabId];
+  if (prev) {
+    const elapsed = (now - prev.since) / 1000;
+    if (elapsed > 0) addVideo(prev.d, Math.min(elapsed, VID_STALE_MS / 1000));
+    delete vidPlaying[tabId];
+  }
+  if (s === 'play' && domain) vidPlaying[tabId] = { d: domain, since: now };
+  if (s) vidState[tabId] = s;
+  else delete vidState[tabId];
+  persist().catch(() => {});
+}
+
+// tab closed or navigated away — settle whatever it was playing
+function flushVidTab(tabId) {
+  const prev = vidPlaying[tabId];
+  if (prev) {
+    const elapsed = (Date.now() - prev.since) / 1000;
+    if (elapsed > 0) addVideo(prev.d, Math.min(elapsed, VID_STALE_MS / 1000));
+  }
+  delete vidPlaying[tabId];
+  delete vidState[tabId];
 }
 
 function activeTab() {
@@ -181,7 +233,7 @@ async function refresh() {
   const domain = getDomain(tab.url);
   if (!(state.current && state.current.domain === domain)) {
     await commit();
-    if (domain) state.current = { domain, start: Date.now() };
+    if (domain) state.current = { domain, start: Date.now(), tabId: tab.id };
   }
   return finish();
 }
@@ -324,10 +376,15 @@ chrome.tabs.onActivated.addListener(() => {
   ready.then(refresh);
 });
 
-chrome.tabs.onUpdated.addListener((_tabId, change) => {
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.url) ready.then(() => flushVidTab(tabId)); // page gone: settle its video
   if (change.url || change.status === 'complete' || 'audible' in change) {
     ready.then(refresh);
   }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  ready.then(() => flushVidTab(tabId));
 });
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
@@ -354,8 +411,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   ready.then(updateBadge);
 });
 
-// messages from popup / dashboard
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+// messages from popup / dashboard / content scripts
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'vid' && sender && sender.tab && sender.tab.id !== undefined) {
+    // page reports whether a substantial video is playing / paused / absent
+    const tabId = sender.tab.id;
+    const domain = getDomain(sender.url || sender.tab.url);
+    ready.then(() => handleVid(tabId, domain, msg.s));
+  }
   if (msg && msg.type === 'refresh') {
     ready.then(refresh);
   }

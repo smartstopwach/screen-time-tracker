@@ -55,6 +55,14 @@
     }
     .chip i { width: 7px; height: 7px; border-radius: 99px; display: inline-block; }
 
+    .vid {
+      display: flex; align-items: center; gap: 7px; margin-top: 8px;
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 9px; font-size: 11px; color: var(--muted);
+    }
+    .vid svg { width: 12px; height: 12px; color: var(--accent); flex: none; }
+    .vid b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
+
     .list-head {
       display: flex; justify-content: space-between; align-items: center;
       padding: 11px 14px 5px; font-size: 10.5px; font-weight: 650;
@@ -132,6 +140,10 @@
       </div>
     </div>
     <div class="cats" id="catRow"></div>
+    <div class="vid" id="vidRow" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5v14l12-7z"/></svg>
+      <span id="vidText"></span>
+    </div>
   </header>
 
   <div class="list-head"><span>Top sites &middot; Today</span><span id="listCount">0 sites</span></div>
