@@ -100,6 +100,21 @@
     return (d && d.vpause) ? d.vpause : {};
   }
 
+  // days of history that actually exist (1..maxN) — keeps averages honest on a
+  // fresh install instead of dividing by a full week that never happened
+  function trackingSpan(maxN) {
+    var first = null;
+    for (var k in days) {
+      if (sumSites(daySites(k)) > 0 && (!first || k < first)) first = k;
+    }
+    if (!first) return 1;
+    var d0 = new Date(first + 'T00:00:00');
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var span = Math.floor((today - d0) / 86400000) + 1;
+    return Math.max(1, Math.min(maxN, span));
+  }
+
   function sumSites(obj) {
     var s = 0;
     for (var k in obj) s += obj[k];
@@ -303,6 +318,7 @@
 
   function heatHTML() {
     var keys = dateKeys(7);
+    var span = trackingSpan(7);
     var hours = new Array(24).fill(0);
     keys.forEach(function (k) {
       var h = dayHours(k);
@@ -312,7 +328,7 @@
     var cells = hours.map(function (v, i) {
       var bg = v > 0 ? 'rgba(59,130,246,' + (0.10 + 0.90 * (v / max)).toFixed(2) + ')' : 'var(--track)';
       return '<div class="heat-cell" style="background:' + bg + '" title="' + hourLabel(i) +
-        ' · avg ' + fmtTime(v / 7) + '"></div>';
+        ' · avg ' + fmtTime(v / span) + '"></div>';
     }).join('');
     var labs = '';
     for (var j = 0; j < 24; j++) labs += '<span>' + (j % 3 === 0 ? hourShort(j) : '') + '</span>';
@@ -350,6 +366,10 @@
     var weekSum = 0;
     k7.forEach(function (k) { weekSum += sumSites(daySites(k)); });
 
+    var span = trackingSpan(7);
+    var avgK = span >= 7 ? '7-day average' : 'Daily average';
+    var avgS = span >= 7 ? 'per day' : 'per day · day ' + span + ' of tracking';
+
     var delta;
     if (yesterday > 0) {
       var p = ((t - yesterday) / yesterday) * 100;
@@ -369,7 +389,7 @@
     var cards =
       '<div class="cards">' +
       '<div class="card"><div class="k">Today</div><div class="v">' + fmtTime(t) + '</div>' + delta + '</div>' +
-      '<div class="card"><div class="k">7-day average</div><div class="v">' + fmtTime(weekSum / 7) + '</div><div class="d muted">per day</div></div>' +
+      '<div class="card"><div class="k">' + avgK + '</div><div class="v">' + fmtTime(weekSum / span) + '</div><div class="d muted">' + avgS + '</div></div>' +
       '<div class="card"><div class="k">Top site today</div><div class="v">' +
       (top ? '<small>' + top[0] + '</small> · ' + fmtTime(top[1]) : '—') + '</div>' +
       (topCat ? '<div class="d muted">' + topCat.label + '</div>' : '') + '</div>' +
@@ -413,7 +433,9 @@
       '<div class="panel"><div class="panel-h"><h3>When you are online</h3>' +
       '<div class="heat-legend">less <i style="background:rgba(59,130,246,.15)"></i>' +
       '<i style="background:rgba(59,130,246,.4)"></i><i style="background:rgba(59,130,246,.7)"></i>' +
-      '<i style="background:rgba(59,130,246,1)"></i> more &nbsp;·&nbsp; 7-day average by hour</div></div>' +
+      '<i style="background:rgba(59,130,246,1)"></i> more &nbsp;·&nbsp; ' +
+      (span >= 7 ? '7-day average by hour' : 'average by hour · ' + span + (span > 1 ? ' days' : ' day') + ' of data') +
+      '</div></div>' +
       heatHTML() + '</div>';
 
     // ── top sites ──
@@ -618,7 +640,8 @@
     } else {
       s1 = thisWeek > 0 ? 'No data for last week to compare' : 'No data yet — keep browsing!';
     }
-    cards.push(['calendar', 'This week (7 days)', fmtTime(thisWeek), s1]);
+    var spanW = trackingSpan(7);
+    cards.push(['calendar', spanW >= 7 ? 'This week (7 days)' : 'This week so far', fmtTime(thisWeek), s1]);
 
     // 2 · top category + productivity score
     var cats = catTotals(k7);
@@ -664,7 +687,7 @@
     for (var i2 = 1; i2 < 24; i2++) if (hours[i2] > hours[pk]) pk = i2;
     if (hours[pk] >= 60) {
       cards.push(['moon', 'Peak usage hour', hourLabel(pk) + ' – ' + hourLabel((pk + 1) % 24),
-        'avg ' + fmtTime(hours[pk] / 7) + ' during this hour (7-day average)']);
+        'avg ' + fmtTime(hours[pk] / spanW) + ' during this hour (daily average)']);
     }
 
     // 4/5 · most increased / reduced site
@@ -693,8 +716,10 @@
     var goalSecs = (settings.dailyGoalMinutes || 0) * 60;
     if (goalSecs > 0) {
       var under = 0;
-      k7.forEach(function (k) { if (sumSites(daySites(k)) <= goalSecs) under++; });
-      cards.push(['target', 'Goal streak', under + ' of 7 days',
+      k7.slice(-spanW).forEach(function (k) {
+        if (sumSites(daySites(k)) <= goalSecs) under++;
+      });
+      cards.push(['target', 'Goal streak', under + ' of ' + spanW + ' days',
         'under your ' + fmtTime(goalSecs) + ' daily goal this week']);
     }
 
