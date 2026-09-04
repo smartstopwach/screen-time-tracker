@@ -199,7 +199,10 @@
   function hasData() { return Object.keys(total).length > 0; }
 
   function emptyHTML() {
-    return '<div class="panel"><div class="empty">No data yet 😴<br>Open some websites — the dashboard fills up automatically!<br><small>Tracking runs quietly in the background while you browse.</small></div></div>';
+    var msg = EMBED
+      ? 'This snapshot has no data yet.<br>Export again from the extension after browsing to publish your stats.'
+      : 'No data yet 😴<br>Open some websites — the dashboard fills up automatically!<br><small>Tracking runs quietly in the background while you browse.</small>';
+    return '<div class="panel"><div class="empty">' + msg + '</div></div>';
   }
 
   // category totals across a set of day keys

@@ -4,7 +4,7 @@
 
 🌍 **Live web dashboard:** https://smartstopwach.github.io/screen-time-tracker/
 
-> 100% private — all data stays on your device. The live page above is a read-only *snapshot* exported from the extension.
+> 100% private — all data stays on your device. The live page above is a read-only *snapshot* exported from the extension (currently empty — replace `index.html` with your own export to publish your stats).
 
 ---
 
