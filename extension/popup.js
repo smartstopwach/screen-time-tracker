@@ -104,7 +104,7 @@
     var ring = $('ringFill');
     ring.style.strokeDasharray = CIRC.toFixed(1);
     ring.style.strokeDashoffset = (CIRC * (1 - frac)).toFixed(1);
-    ring.style.stroke = (goalSecs > 0 && totalSecs >= goalSecs) ? '#ef4444' : '';
+    ring.style.stroke = (goalSecs > 0 && totalSecs >= goalSecs) ? 'var(--bad)' : '';
 
     var timeText = totalSecs > 0 ? fmtTime(totalSecs) : '0m';
     $('ringTime').textContent = timeText;
@@ -122,7 +122,7 @@
     var deltaEl = $('heroDelta');
     if (yTotal > 0) {
       var pct = ((totalSecs - yTotal) / yTotal) * 100;
-      deltaEl.textContent = (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(pct)) + '% vs yesterday';
+      deltaEl.textContent = (pct >= 0 ? '↑ ' : '↓ ') + Math.abs(Math.round(pct)) + '% vs yesterday';
       deltaEl.className = 'delta ' + (pct > 0 ? 'bad' : 'good'); // less time = good
     } else {
       deltaEl.textContent = '';
@@ -147,7 +147,7 @@
     var list = $('list');
     $('listCount').textContent = entries.length + (entries.length === 1 ? ' site' : ' sites');
     if (!entries.length) {
-      list.innerHTML = '<div class="empty">No data yet 😴<br>Open some websites — tracking starts automatically!</div>';
+      list.innerHTML = '<div class="empty">No data yet — open a few websites and tracking starts automatically.</div>';
       return;
     }
     var max = entries[0][1];

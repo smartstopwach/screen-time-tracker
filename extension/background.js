@@ -231,7 +231,7 @@ async function updateBadge() {
 
   // traffic-light colour vs daily goal
   const goalSecs = (settings.dailyGoalMinutes || 0) * 60;
-  let color = '#4f46e5';
+  let color = '#3b82f6';
   if (goalSecs > 0) {
     if (s >= goalSecs) color = '#ef4444';
     else if (s >= goalSecs * 0.75) color = '#f59e0b';
@@ -279,8 +279,8 @@ async function checkAlerts() {
   if (goalMins > 0 && dayTotal >= goalMins * 60 && !sent.goal) {
     sent.goal = true;
     changed = true;
-    notify('Daily goal reached 🎯  You have spent ' + fmtShort(dayTotal) +
-      ' online today (goal ' + fmtShort(goalMins * 60) + '). Time for a break?');
+    notify('Daily goal reached — ' + fmtShort(dayTotal) + ' of ' +
+      fmtShort(goalMins * 60) + ' spent online today.');
   }
 
   const limits = settings.siteLimits || {};
@@ -290,8 +290,8 @@ async function checkAlerts() {
     if (limitMins > 0 && used >= limitMins * 60 && !sent['limit:' + domain]) {
       sent['limit:' + domain] = true;
       changed = true;
-      notify('Limit reached on ' + domain + ' ⏳  ' + fmtShort(used) +
-        ' today (limit ' + fmtShort(limitMins * 60) + ').');
+      notify('Site limit reached — ' + domain + ': ' + fmtShort(used) +
+        ' of ' + fmtShort(limitMins * 60) + ' today.');
     }
   }
 

@@ -23,6 +23,17 @@
   };
 
   var WD = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  var ICONS = {
+    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+    pie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>',
+    zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+    trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>',
+    trendDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 7 7"/><path d="M14 16h6v-6"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="4.5" ry="9"/></svg>',
+  };
   var TITLES = { overview: 'Overview', sites: 'Sites', insights: 'Insights', settings: 'Settings' };
 
   var settings = Object.assign({}, DEFAULTS);
@@ -170,8 +181,8 @@
 
   function applyTheme(t) {
     document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
-    var tb = $('#themeBtn');
-    if (tb) tb.textContent = t === 'light' ? '🌙 Dark mode' : '☀️ Light mode';
+    var lb = $('#themeBtnLabel');
+    if (lb) lb.textContent = t === 'light' ? 'Dark mode' : 'Light mode';
   }
 
   async function setTheme(t) {
@@ -184,13 +195,13 @@
   async function saveSettings() {
     if (EMBED) return; // read-only snapshot
     await chrome.storage.local.set({ settings: settings });
-    flashSaved('Saved ✓');
+    flashSaved('Saved');
   }
 
   function flashSaved(msg) {
     var t = $('#toast');
     if (!t) return;
-    t.textContent = msg || 'Saved ✓';
+    t.textContent = msg || 'Saved';
     t.classList.add('show');
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
@@ -201,7 +212,7 @@
   function emptyHTML() {
     var msg = EMBED
       ? 'This snapshot has no data yet.<br>Export again from the extension after browsing to publish your stats.'
-      : 'No data yet 😴<br>Open some websites — the dashboard fills up automatically!<br><small>Tracking runs quietly in the background while you browse.</small>';
+      : 'No data yet — open a few websites and the dashboard will fill up automatically.';
     return '<div class="panel"><div class="empty">' + msg + '</div></div>';
   }
 
@@ -242,7 +253,7 @@
         acc += g.frac;
       });
     }
-    s += '<text x="90" y="87" text-anchor="middle" font-size="20" font-weight="800" fill="currentColor">' + fmtTime(totalSecs) + '</text>';
+    s += '<text x="90" y="87" text-anchor="middle" font-size="20" font-weight="650" fill="currentColor">' + fmtTime(totalSecs) + '</text>';
     s += '<text x="90" y="107" text-anchor="middle" font-size="10" style="fill:var(--muted)">today</text>';
     return s + '</svg>';
   }
@@ -287,7 +298,7 @@
     });
     var max = Math.max(60, Math.max.apply(null, hours));
     var cells = hours.map(function (v, i) {
-      var bg = v > 0 ? 'rgba(99,102,241,' + (0.10 + 0.90 * (v / max)).toFixed(2) + ')' : 'var(--track)';
+      var bg = v > 0 ? 'rgba(59,130,246,' + (0.10 + 0.90 * (v / max)).toFixed(2) + ')' : 'var(--track)';
       return '<div class="heat-cell" style="background:' + bg + '" title="' + hourLabel(i) +
         ' · avg ' + fmtTime(v / 7) + '"></div>';
     }).join('');
@@ -331,7 +342,7 @@
     if (yesterday > 0) {
       var p = ((t - yesterday) / yesterday) * 100;
       delta = '<div class="d ' + (p > 0 ? 'bad' : 'good') + '">' +
-        (p >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(p)) + '% vs yesterday</div>';
+        (p >= 0 ? '↑ ' : '↓ ') + Math.abs(Math.round(p)) + '% vs yesterday</div>';
     } else {
       delta = '<div class="d muted">' + (t > 0 ? 'first day of tracking' : 'waiting for data') + '</div>';
     }
@@ -365,7 +376,7 @@
       return { label: c.cat.label, color: c.cat.color, secs: c.secs, frac: catTotal > 0 ? c.secs / catTotal : 0 };
     });
     if (restSecs > 0 && catTotal > 0) {
-      segs.push({ label: 'Other categories', color: '#64748b', secs: restSecs, frac: restSecs / catTotal });
+      segs.push({ label: 'Other categories', color: '#8b93a1', secs: restSecs, frac: restSecs / catTotal });
     }
     var legend = segs.map(function (s) {
       return '<div class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' +
@@ -388,9 +399,9 @@
     // ── heatmap ──
     var heat =
       '<div class="panel"><div class="panel-h"><h3>When you are online</h3>' +
-      '<div class="heat-legend">less <i style="background:rgba(99,102,241,.15)"></i>' +
-      '<i style="background:rgba(99,102,241,.4)"></i><i style="background:rgba(99,102,241,.7)"></i>' +
-      '<i style="background:rgba(99,102,241,1)"></i> more &nbsp;·&nbsp; 7-day average by hour</div></div>' +
+      '<div class="heat-legend">less <i style="background:rgba(59,130,246,.15)"></i>' +
+      '<i style="background:rgba(59,130,246,.4)"></i><i style="background:rgba(59,130,246,.7)"></i>' +
+      '<i style="background:rgba(59,130,246,1)"></i> more &nbsp;·&nbsp; 7-day average by hour</div></div>' +
       heatHTML() + '</div>';
 
     // ── top sites ──
@@ -445,7 +456,7 @@
 
     var lim = (settings.siteLimits || {})[r.d];
     var limitTag = lim
-      ? '<span class="limit-tag' + (r.today >= lim * 60 ? ' over' : '') + '">⏳ ' +
+      ? '<span class="limit-tag' + (r.today >= lim * 60 ? ' over' : '') + '">' +
         fmtCell(r.today) + ' / ' + lim + 'm today</span>'
       : '<span class="limit-tag">No daily limit</span>';
 
@@ -577,12 +588,12 @@
     } else {
       s1 = thisWeek > 0 ? 'No data for last week to compare' : 'No data yet — keep browsing!';
     }
-    cards.push(['📅', 'This week (7 days)', fmtTime(thisWeek), s1]);
+    cards.push(['calendar', 'This week (7 days)', fmtTime(thisWeek), s1]);
 
     // 2 · top category + productivity score
     var cats = catTotals(k7);
     if (cats.length) {
-      cards.push(['🏆', 'Top category · 7 days', cats[0].cat.label,
+      cards.push(['pie', 'Top category · 7 days', cats[0].cat.label,
         fmtTime(cats[0].secs) + ' — ' + cats[0].cat.label.toLowerCase() + ' leads your screen time']);
     }
     var prodSecs = 0;
@@ -590,7 +601,7 @@
       if (c.cat.id === 'work' || c.cat.id === 'learning') prodSecs += c.secs;
     });
     if (thisWeek > 0) {
-      cards.push(['⚡', 'Productivity score', Math.round((prodSecs / thisWeek) * 100) + '%',
+      cards.push(['zap', 'Productivity score', Math.round((prodSecs / thisWeek) * 100) + '%',
         'share of Work + Learning in this week\u2019s screen time']);
     }
 
@@ -603,7 +614,7 @@
     var pk = 0;
     for (var i2 = 1; i2 < 24; i2++) if (hours[i2] > hours[pk]) pk = i2;
     if (hours[pk] >= 60) {
-      cards.push(['🌙', 'Peak usage hour', hourLabel(pk) + ' – ' + hourLabel((pk + 1) % 24),
+      cards.push(['moon', 'Peak usage hour', hourLabel(pk) + ' – ' + hourLabel((pk + 1) % 24),
         'avg ' + fmtTime(hours[pk] / 7) + ' during this hour (7-day average)']);
     }
 
@@ -624,26 +635,26 @@
       if (diff > 300 && (!inc || diff > inc.diff)) inc = { d: d, diff: diff };
       if (diff < -300 && (!dec || diff < dec.diff)) dec = { d: d, diff: diff };
     });
-    if (inc) cards.push(['📈', 'Most increased', inc.d,
+    if (inc) cards.push(['trendUp', 'Most increased', inc.d,
       '<b class="bad">+' + fmtTime(inc.diff) + '</b> more than last week']);
-    if (dec) cards.push(['📉', 'Most reduced', dec.d,
-      '<b class="good">−' + fmtTime(-dec.diff) + '</b> less than last week. Nice!']);
+    if (dec) cards.push(['trendDown', 'Most reduced', dec.d,
+      '<b class="good">−' + fmtTime(-dec.diff) + '</b> less than last week.']);
 
     // 6 · goal streak
     var goalSecs = (settings.dailyGoalMinutes || 0) * 60;
     if (goalSecs > 0) {
       var under = 0;
       k7.forEach(function (k) { if (sumSites(daySites(k)) <= goalSecs) under++; });
-      cards.push(['🎯', 'Goal streak', under + ' of 7 days',
+      cards.push(['target', 'Goal streak', under + ' of 7 days',
         'under your ' + fmtTime(goalSecs) + ' daily goal this week']);
     }
 
     // 7 · site count
-    cards.push(['🌐', 'Sites visited', String(Object.keys(perSite).length),
+    cards.push(['globe', 'Sites visited', String(Object.keys(perSite).length),
       'distinct sites in the last 7 days']);
 
     body.innerHTML = '<div class="icards">' + cards.map(function (c) {
-      return '<div class="icard"><div class="emoji">' + c[0] + '</div><div class="t">' + c[1] +
+      return '<div class="icard"><div class="icard-icon">' + ICONS[c[0]] + '</div><div class="t">' + c[1] +
         '</div><div class="v">' + c[2] + '</div><div class="s">' + c[3] + '</div></div>';
     }).join('') + '</div>';
   }
@@ -673,7 +684,7 @@
     download('screen-time-' + keyOf() + '.csv', lines.join('\n'), 'text/csv');
   }
 
-  // ★ Web export: one self-contained HTML file with all data embedded —
+  // Web export: one self-contained HTML file with all data embedded —
   //   host it anywhere (GitHub Pages, Netlify…) and it just works, read-only.
   async function exportWeb() {
     flashSaved('Building page…');
@@ -697,7 +708,7 @@
       .replace('<script src="dashboard.js"><\/script>', dataScript + '<script>\n' + dashJs + '\n<\/script>');
 
     download('index.html', html, 'text/html');
-    flashSaved('index.html ready — host it! 🌍');
+    flashSaved('index.html ready');
   }
 
   function armReset(btn, scope) {
@@ -729,7 +740,7 @@
     var limRows = Object.keys(limits).map(function (d) {
       return '<div class="limit-row"><span class="lr-d">' + esc(d) + '</span>' +
         '<span class="lr-m">' + limits[d] + 'm</span>' +
-        '<button type="button" data-rm="' + esc(d) + '" title="Remove">✕</button></div>';
+        '<button type="button" data-rm="' + esc(d) + '" title="Remove">×</button></div>';
     }).join('') || '<p class="footnote">No limits set yet.</p>';
 
     var tops = Object.keys(total).sort(function (a, b) { return total[b] - total[a]; }).slice(0, 25);
@@ -741,7 +752,7 @@
     body.innerHTML =
       '<div class="set-grid">' +
 
-      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🎯 Daily goal &amp; alerts</h3></div>' +
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>Daily goal &amp; alerts</h3></div>' +
       '<div class="field"><label for="goalInput">Daily screen-time goal (minutes)</label>' +
       '<input id="goalInput" type="number" min="0" max="1440" step="15" value="' + (settings.dailyGoalMinutes || 0) + '">' +
       '<div class="hint">0 = goal off. The toolbar badge turns amber at 75% and red once you cross it.</div></div>' +
@@ -753,7 +764,7 @@
       '><span class="knob"></span></span></div>' +
       '<div class="hint" style="margin-top:10px">You get one alert per day when the goal or a site limit is crossed, plus a morning recap of yesterday.</div></div>' +
 
-      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>⏳ Site limits</h3></div>' +
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>Site limits</h3></div>' +
       '<div class="field"><label>New limit</label>' +
       '<div class="btn-row" style="align-items:center;flex-wrap:nowrap">' +
       '<input id="limDomain" type="text" list="dlSites" placeholder="youtube.com" style="flex:1;min-width:130px;' + inputCss + '">' +
@@ -762,26 +773,26 @@
       '<div class="hint">You will be notified once per day when a site crosses its limit.</div></div>' +
       '<div style="margin-top:6px">' + limRows + '</div></div>' +
 
-      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🌍 Web dashboard</h3></div>' +
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>Web dashboard</h3></div>' +
       '<div class="field"><label for="webUrlInput">Hosted page URL (redirect)</label>' +
       '<div class="btn-row" style="align-items:center;flex-wrap:nowrap">' +
       '<input id="webUrlInput" type="text" placeholder="https://your-site.github.io/screen-time-tracker/" style="flex:1;min-width:200px;' + inputCss + '">' +
-      '<button class="btn" id="openWebBtn" type="button">Open ↗</button></div>' +
-      '<div class="hint">Export the web page below, upload <b>index.html</b> to your host (GitHub Pages, Netlify…), then paste its URL here. A 🌐 redirect button appears in the popup.</div></div>' +
-      '<div class="btn-row"><button class="btn primary" id="exportWebBtn" type="button">🌍 Export web page (index.html)</button></div>' +
+      '<button class="btn" id="openWebBtn" type="button">Open</button></div>' +
+      '<div class="hint">Export the web page below, upload <b>index.html</b> to your host (GitHub Pages, Netlify…), then paste its URL here. A redirect button appears in the popup.</div></div>' +
+      '<div class="btn-row"><button class="btn primary" id="exportWebBtn" type="button">Export web page (index.html)</button></div>' +
       '<div class="hint">Single self-contained HTML file with all your data baked in — works offline, no server needed.</div></div>' +
 
-      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🎨 Appearance</h3></div>' +
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>Appearance</h3></div>' +
       '<div class="btn-row">' +
-      '<button class="btn' + (settings.theme !== 'light' ? ' primary' : '') + '" id="thDark" type="button">🌙 Dark</button>' +
-      '<button class="btn' + (settings.theme === 'light' ? ' primary' : '') + '" id="thLight" type="button">☀️ Light</button></div>' +
+      '<button class="btn' + (settings.theme !== 'light' ? ' primary' : '') + '" id="thDark" type="button">Dark</button>' +
+      '<button class="btn' + (settings.theme === 'light' ? ' primary' : '') + '" id="thLight" type="button">Light</button></div>' +
       '<div class="hint" style="margin-top:10px">Applies to the popup and the exported web page.</div></div>' +
 
-      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>💾 Data</h3></div>' +
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>Data</h3></div>' +
       '<div class="btn-row">' +
-      '<button class="btn" id="exportBtn" type="button">⬇️ Backup JSON</button>' +
-      '<button class="btn" id="exportCsvBtn" type="button">📄 Export CSV</button>' +
-      '<button class="btn" id="importBtn" type="button">⬆️ Import JSON</button>' +
+      '<button class="btn" id="exportBtn" type="button">Download JSON</button>' +
+      '<button class="btn" id="exportCsvBtn" type="button">Export CSV</button>' +
+      '<button class="btn" id="importBtn" type="button">Import JSON</button>' +
       '<input type="file" id="importFile" accept="application/json,.json" style="display:none">' +
       '</div>' +
       '<div class="btn-row" style="margin-top:10px">' +
@@ -863,7 +874,7 @@
             total: data.total || {},
             settings: data.settings,
           });
-          flashSaved('Imported ✓');
+          flashSaved('Imported');
           setTimeout(async function () { await loadData(); renderAll(); }, 400);
         } catch (_) {
           flashSaved('Import failed');
@@ -1019,14 +1030,14 @@
     $('#topDate').textContent = 'Snapshot · ' +
       when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
     var sn = document.querySelector('.side-note');
-    if (sn) sn.innerHTML = '📸 Read-only snapshot<br>' + when.toLocaleString() +
-      '<br>Exported from the<br>Screen Time Tracker extension';
+    if (sn) sn.innerHTML = 'Read-only snapshot · ' + when.toLocaleString() +
+      '<br>Exported from Screen Time Tracker';
   }
 
   var toast = document.createElement('div');
   toast.id = 'toast';
   toast.className = 'saved-flash toast';
-  toast.textContent = 'Saved ✓';
+  toast.textContent = 'Saved';
   document.body.appendChild(toast);
 
   wireEvents();

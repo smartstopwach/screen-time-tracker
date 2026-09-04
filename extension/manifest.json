@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Screen Time Tracker",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Professional screen-time insights: site-wise time, categories, goals, alerts, trends & web export. 100% private.",
   "permissions": ["tabs", "storage", "idle", "alarms", "notifications"],
   "background": {

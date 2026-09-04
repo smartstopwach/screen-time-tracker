@@ -2,7 +2,7 @@
 
 var CATEGORIES = [
   {
-    id: 'work', label: 'Work', color: '#3b82f6',
+    id: 'work', label: 'Work', color: '#5b8def',
     domains: ['github.com', 'gitlab.com', 'stackoverflow.com', 'notion.so',
       'figma.com', 'slack.com', 'zoom.us', 'teams.microsoft.com', 'office.com',
       'outlook.com', 'atlassian.net', 'linear.app', 'asana.com', 'trello.com',
@@ -14,7 +14,7 @@ var CATEGORIES = [
       'bitbucket.org', 'basecamp.com', 'monday.com', 'workplace.com']
   },
   {
-    id: 'social', label: 'Social', color: '#ec4899',
+    id: 'social', label: 'Social', color: '#e0679e',
     domains: ['facebook.com', 'instagram.com', 'twitter.com', 'x.com',
       'threads.net', 'whatsapp.com', 'web.whatsapp.com', 'telegram.org',
       'web.telegram.org', 'snapchat.com', 'linkedin.com', 'reddit.com',
@@ -22,7 +22,7 @@ var CATEGORIES = [
       'mastodon.social', 'hinge.co', 'tinder.com', 'bumble.com']
   },
   {
-    id: 'entertainment', label: 'Entertainment', color: '#f59e0b',
+    id: 'entertainment', label: 'Entertainment', color: '#e0a23c',
     domains: ['youtube.com', 'youtu.be', 'netflix.com', 'primevideo.com',
       'hotstar.com', 'disneyplus.com', 'jiocinema.com', 'twitch.tv',
       'mxplayer.in', 'spotify.com', 'soundcloud.com', 'sonyliv.com',
@@ -30,7 +30,7 @@ var CATEGORIES = [
       'roblox.com', 'pbskids.org', 'voot.com']
   },
   {
-    id: 'learning', label: 'Learning', color: '#10b981',
+    id: 'learning', label: 'Learning', color: '#3cb583',
     domains: ['khanacademy.org', 'coursera.org', 'udemy.com', 'edx.org',
       'duolingo.com', 'w3schools.com', 'geeksforgeeks.org', 'leetcode.com',
       'hackerrank.com', 'codecademy.com', 'freecodecamp.org',
@@ -39,7 +39,7 @@ var CATEGORIES = [
       'tutorialspoint.com', 'javatpoint.com', 'programiz.com']
   },
   {
-    id: 'shopping', label: 'Shopping', color: '#f97316',
+    id: 'shopping', label: 'Shopping', color: '#e07c42',
     domains: ['amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com',
       'meesho.com', 'ajio.com', 'nykaa.com', 'ebay.com', 'walmart.com',
       'aliexpress.com', 'bigbasket.com', 'zepto.com', 'blinkit.com',
@@ -47,7 +47,7 @@ var CATEGORIES = [
       'tatacliq.com', 'croma.com', 'reliancedigital.in', 'firstcry.com']
   },
   {
-    id: 'news', label: 'News', color: '#06b6d4',
+    id: 'news', label: 'News', color: '#3fb4c9',
     domains: ['news.google.com', 'timesofindia.indiatimes.com',
       'indianexpress.com', 'hindustantimes.com', 'ndtv.com', 'bbc.com',
       'cnn.com', 'republicworld.com', 'abplive.com', 'dnaindia.com',
@@ -56,13 +56,13 @@ var CATEGORIES = [
       'espn.com', 'cricbuzz.com', 'sportskeeda.com']
   },
   {
-    id: 'search', label: 'Search', color: '#8b5cf6',
+    id: 'search', label: 'Search', color: '#9a80e8',
     domains: ['google.com', 'bing.com', 'duckduckgo.com', 'yahoo.com',
       'search.brave.com', 'ecosia.org', 'yandex.com', 'baidu.com',
       'perplexity.ai', 'wikipedia.org']
   },
   {
-    id: 'other', label: 'Other', color: '#64748b',
+    id: 'other', label: 'Other', color: '#8b93a1',
     domains: []
   }
 ];
