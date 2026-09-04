@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Screen Time · Dashboard</title>
+  <style>
+    /* ── design system ─────────────────────────────────────────────── */
+    :root[data-theme="dark"] {
+      --bg: #080d1a; --panel: #0f1729; --panel2: #131e36; --border: #1d2946;
+      --text: #e6ecf8; --muted: #8b98b6; --track: #1c2740;
+      --accent: #6366f1; --accent2: #a855f7;
+      --good: #34d399; --warn: #fbbf24; --bad: #f87171;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    :root[data-theme="light"] {
+      --bg: #eef2f9; --panel: #ffffff; --panel2: #f6f8fd; --border: #e1e8f3;
+      --text: #131c36; --muted: #5b688a; --track: #e6ebf5;
+      --accent: #4f46e5; --accent2: #9333ea;
+      --good: #059669; --warn: #d97706; --bad: #dc2626;
+      --shadow: 0 10px 30px rgba(23,43,99,.08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+    }
+    button { font-family: inherit; }
+    input, select { font-family: inherit; color: var(--text); }
+
+    .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+
+    /* ── sidebar ───────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 20px 14px;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 10px; flex: none;
+      background: linear-gradient(135deg, #4f46e5, #a855f7);
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+    }
+    .logo b { font-size: 14px; line-height: 1.2; display: block; }
+    .logo small { color: var(--muted); font-size: 10px; }
+
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px; text-align: left;
+      background: transparent; border: 0; border-radius: 10px;
+      color: var(--muted); font-size: 13px; font-weight: 600;
+      padding: 10px 12px; cursor: pointer;
+    }
+    .nav-btn span.k { font-size: 15px; width: 20px; text-align: center; }
+    .nav-btn:hover { color: var(--text); background: var(--panel2); }
+    .nav-btn.active {
+      color: #fff; background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      box-shadow: 0 6px 16px rgba(99,102,241,.35);
+    }
+    :root[data-theme="light"] .nav-btn.active { color: #fff; }
+
+    .side-foot { margin-top: auto; padding: 10px 8px 0; }
+    .theme-btn {
+      width: 100%; background: var(--panel2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; font-size: 12px; font-weight: 600;
+      padding: 9px; cursor: pointer;
+    }
+    .theme-btn:hover { border-color: var(--accent); }
+    .side-note { font-size: 10px; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+    /* ── main / topbar ─────────────────────────────────────────────── */
+    .main { min-width: 0; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 28px; border-bottom: 1px solid var(--border);
+      background: var(--panel); position: sticky; top: 0; z-index: 5;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 800; }
+    .top-date { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 24px 28px 60px; }
+    .tab { display: none; }
+    .tab.active { display: block; animation: fade .25s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+
+    /* ── stat cards ────────────────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 18px;
+    }
+    .card .k {
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted);
+    }
+    .card .v { font-size: 24px; font-weight: 800; margin-top: 6px; }
+    .card .v small { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .card .d { font-size: 11.5px; margin-top: 4px; font-weight: 700; }
+    .d.good { color: var(--good); } .d.bad { color: var(--bad); } .d.muted { color: var(--muted); }
+
+    /* ── panels ────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; margin-top: 14px;
+    }
+    .panel-h {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .panel-h h3 { font-size: 13.5px; font-weight: 700; }
+    .panel-h .sub { font-size: 11px; color: var(--muted); }
+    .seg { display: flex; gap: 4px; background: var(--panel2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+    .seg button {
+      border: 0; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 7px;
+    }
+    .seg button.active { background: var(--accent); color: #fff; }
+
+    .charts-row { display: grid; grid-template-columns: 5fr 7fr; gap: 14px; }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } .app { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 8px; } .nav { flex-direction: row; flex-wrap: wrap; } .side-foot { margin: 0 0 0 auto; } .side-note { display: none; } }
+
+    /* donut */
+    .donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .donut { width: 170px; height: 170px; flex: none; }
+    .legend { display: flex; flex-direction: column; gap: 9px; flex: 1; min-width: 150px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .legend-item .dot { width: 9px; height: 9px; border-radius: 99px; flex: none; }
+    .legend-item .lname { font-weight: 600; }
+    .legend-item .ltime { margin-left: auto; font-weight: 700; font-size: 11.5px; }
+    .legend-item .lpct { color: var(--muted); width: 34px; text-align: right; }
+
+    /* bar chart */
+    .barchart { position: relative; height: 230px; margin: 10px 6px 20px 46px; }
+    .grid-line {
+      position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border);
+    }
+    .grid-line span {
+      position: absolute; left: -46px; top: -7px; width: 38px; text-align: right;
+      font-size: 10px; color: var(--muted);
+    }
+    .bars { position: absolute; inset: 0; display: flex; align-items: stretch; }
+    .bar-col { position: relative; flex: 1; }
+    .bar {
+      position: absolute; bottom: 0; left: 18%; width: 64%;
+      background: linear-gradient(180deg, var(--accent2), var(--accent));
+      border-radius: 5px 5px 2px 2px; opacity: .85;
+    }
+    .bar.today { opacity: 1; box-shadow: 0 0 0 1.5px rgba(168,85,247,.5); }
+    .bar-lab {
+      position: absolute; bottom: -19px; width: 100%; text-align: center;
+      font-size: 9.5px; color: var(--muted);
+    }
+    .goal-line { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--bad); opacity: .7; }
+    .goal-line span {
+      position: absolute; right: 2px; top: -16px; font-size: 9.5px;
+      color: var(--bad); font-weight: 700;
+    }
+
+    /* heatmap */
+    .heat { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; }
+    .heat-cell { height: 36px; border-radius: 5px; background: var(--track); cursor: default; }
+    .heat-labs { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; margin-top: 5px; }
+    .heat-labs span { font-size: 8.5px; color: var(--muted); text-align: left; }
+    .heat-legend { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+    .heat-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    /* top sites list */
+    .trow { display: flex; align-items: center; gap: 12px; padding: 9px 6px; border-radius: 10px; cursor: pointer; }
+    .trow:hover { background: var(--panel2); }
+    .trow .favicon { width: 24px; height: 24px; border-radius: 6px; flex: none; }
+    .favicon.letter {
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 12px;
+    }
+    .trow .tname { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trow .ttime { font-size: 13px; font-weight: 700; flex: none; }
+    .trow .tpct { font-size: 11px; color: var(--muted); width: 40px; text-align: right; flex: none; }
+    .minibar { height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; flex: none; width: 120px; }
+    .minibar i { display: block; height: 100%; border-radius: 99px; }
+
+    /* ── sites table ───────────────────────────────────────────────── */
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .search {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-size: 12.5px; width: 220px; outline: none;
+    }
+    .search:focus { border-color: var(--accent); }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      background: var(--panel2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 999px;
+      font-size: 11px; font-weight: 700; padding: 6px 12px; user-select: none;
+    }
+    .chip i { width: 8px; height: 8px; border-radius: 99px; background: var(--c, var(--muted)); }
+    .chip.active { border-color: var(--accent); color: var(--text); background: var(--panel); }
+    .sortsel {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 8px 10px; font-size: 12px; font-weight: 600; outline: none; margin-left: auto;
+    }
+
+    .stable { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .srow-h, .srow {
+      display: grid; gap: 10px; align-items: center;
+      grid-template-columns: minmax(150px, 1.6fr) 108px 74px 82px 88px minmax(90px, 1fr) 76px;
+      padding: 10px 14px;
+    }
+    .srow-h {
+      background: var(--panel2); font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .7px; color: var(--muted);
+    }
+    .srow { border-top: 1px solid var(--border); cursor: pointer; }
+    .srow:hover { background: var(--panel2); }
+    .scell { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .scell.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .sitecell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .sitecell .favicon { width: 20px; height: 20px; border-radius: 5px; flex: none; }
+    .cat-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10.5px; font-weight: 700; color: var(--text);
+      background: var(--panel2); border: 1px solid var(--border);
+      padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+    }
+    .cat-chip i { width: 7px; height: 7px; border-radius: 99px; background: var(--c, #64748b); }
+    .share { height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; }
+    .share i { display: block; height: 100%; border-radius: 99px; }
+    .spark { display: flex; gap: 2px; align-items: flex-end; height: 26px; }
+    .spark i { flex: 1; background: var(--accent); opacity: .7; border-radius: 1.5px; min-height: 0; }
+
+    .srow-detail { border-top: 1px dashed var(--border); background: var(--panel2); padding: 16px 18px; }
+    .detail-grid { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+    .detail-bars { flex: 1; min-width: 260px; }
+    .detail-bars .db-title { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 8px; }
+    .db-bars { display: flex; gap: 4px; height: 80px; align-items: flex-end; }
+    .db-bars i { flex: 1; background: linear-gradient(180deg, var(--accent2), var(--accent)); border-radius: 3px; opacity: .8; }
+    .db-labs { display: flex; gap: 4px; margin-top: 4px; }
+    .db-labs span { flex: 1; text-align: center; font-size: 8.5px; color: var(--muted); }
+    .detail-meta { display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
+    .detail-meta label { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; display: block; margin-bottom: 4px; }
+    .detail-meta select {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      padding: 7px 10px; font-size: 12px; outline: none; width: 100%;
+    }
+    .limit-tag {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700;
+      background: var(--panel); border: 1px solid var(--border);
+      padding: 7px 12px; border-radius: 9px;
+    }
+    .limit-tag.over { border-color: var(--bad); color: var(--bad); }
+
+    /* ── insights ──────────────────────────────────────────────────── */
+    .icards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .icard {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px;
+    }
+    .icard .emoji {
+      width: 36px; height: 36px; border-radius: 10px; background: var(--panel2);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .icard .t { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .icard .v { font-size: 17px; font-weight: 800; margin-top: 5px; line-height: 1.35; }
+    .icard .s { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .icard .s b.good { color: var(--good); } .icard .s b.bad { color: var(--bad); }
+
+    /* ── settings ──────────────────────────────────────────────────── */
+    .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+    .field { margin-bottom: 16px; }
+    .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 6px; }
+    .field .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .field input[type="number"] {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-size: 13px; width: 130px; outline: none;
+    }
+    .field input[type="number"]:focus { border-color: var(--accent); }
+    .field input[type="text"] {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-size: 12.5px; width: 100%; outline: none;
+    }
+    .field input[type="text"]:focus { border-color: var(--accent); }
+
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+    .switch-row .sl { font-size: 13px; font-weight: 600; }
+    .switch { position: relative; width: 42px; height: 24px; flex: none; }
+    .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; cursor: pointer; z-index: 2; margin: 0; }
+    .switch .knob {
+      position: absolute; inset: 0; background: var(--track); border-radius: 99px;
+      transition: background .2s;
+    }
+    .switch .knob::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      background: #fff; border-radius: 99px; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    .switch input:checked + .knob { background: var(--accent); }
+    .switch input:checked + .knob::after { transform: translateX(18px); }
+
+    .btn {
+      background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 10px; font-size: 12.5px; font-weight: 700;
+      padding: 9px 16px; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary {
+      background: linear-gradient(135deg, #4f46e5, #a855f7); border: 0; color: #fff;
+    }
+    .btn.danger-armed { background: var(--bad); border-color: var(--bad); color: #fff; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .limit-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px dashed var(--border); font-size: 12.5px;
+    }
+    .limit-row:last-child { border-bottom: 0; }
+    .limit-row .lr-d { font-weight: 600; flex: 1; }
+    .limit-row .lr-m { color: var(--muted); font-weight: 700; }
+    .limit-row button {
+      background: transparent; border: 0; color: var(--muted); font-size: 15px;
+      cursor: pointer; padding: 2px 6px;
+    }
+    .limit-row button:hover { color: var(--bad); }
+    .saved-flash {
+      font-size: 11px; font-weight: 700; color: var(--good);
+      opacity: 0; transition: opacity .3s; margin-left: 8px;
+    }
+    .saved-flash.show { opacity: 1; }
+    .saved-flash.toast {
+      position: fixed; right: 24px; bottom: 24px; z-index: 99;
+      margin: 0; font-size: 13px; color: var(--text);
+      background: var(--panel); border: 1px solid var(--good);
+      border-radius: 10px; padding: 10px 18px; box-shadow: var(--shadow);
+    }
+
+    .empty { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.8; padding: 40px 10px; }
+    .footnote { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ── sidebar ─────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">⏱</div>
+        <div><b>Screen Time</b><small>Tracker v2.0</small></div>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" data-tab="overview" type="button"><span class="k">📊</span>Overview</button>
+        <button class="nav-btn" data-tab="sites" type="button"><span class="k">🌐</span>Sites</button>
+        <button class="nav-btn" data-tab="insights" type="button"><span class="k">💡</span>Insights</button>
+        <button class="nav-btn" data-tab="settings" type="button"><span class="k">⚙️</span>Settings</button>
+      </nav>
+      <div class="side-foot">
+        <button class="theme-btn" id="themeBtn" type="button">☀️ Light mode</button>
+        <div class="side-note">🔒 All data stays on this device.<br>No accounts. No tracking.</div>
+      </div>
+    </aside>
+
+    <!-- ── main ────────────────────────────────────────────────────── -->
+    <div class="main">
+      <div class="topbar">
+        <h1 id="topTitle">Overview</h1>
+        <div class="top-date" id="topDate">Thursday, 4 September 2026</div>
+      </div>
+
+      <div class="wrap">
+
+        <!-- ═══ OVERVIEW ═══ -->
+        <section class="tab active" id="tab-overview">
+          <div id="ov-body">
+
+            <!-- static demo content (dashboard.js replaces this with real data) -->
+            <div class="cards">
+              <div class="card"><div class="k">Today</div><div class="v">2h 28m</div><div class="d good">▼ 18% vs yesterday</div></div>
+              <div class="card"><div class="k">7-day average</div><div class="v">2h 41m</div><div class="d muted">per day</div></div>
+              <div class="card"><div class="k">Top site today</div><div class="v"><small>youtube.com</small> · 1h 25m</div><div class="d muted">Entertainment</div></div>
+              <div class="card"><div class="k">Peak hour</div><div class="v">10 PM</div><div class="d muted">38m in one hour</div></div>
+            </div>
+
+            <div class="charts-row">
+              <div class="panel">
+                <div class="panel-h"><h3>Today by category</h3></div>
+                <div class="donut-wrap">
+                  <svg class="donut" viewBox="0 0 180 180" aria-hidden="true">
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#1c2740" stroke-width="24"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#f59e0b" stroke-width="24" stroke-dasharray="228.7 439.8" stroke-dashoffset="0" transform="rotate(-90 90 90)"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#ec4899" stroke-width="24" stroke-dasharray="92.4 439.8" stroke-dashoffset="-228.7" transform="rotate(-90 90 90)"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#3b82f6" stroke-width="24" stroke-dasharray="79.2 439.8" stroke-dashoffset="-321.1" transform="rotate(-90 90 90)"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#10b981" stroke-width="24" stroke-dasharray="30.8 439.8" stroke-dashoffset="-400.3" transform="rotate(-90 90 90)"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke="#64748b" stroke-width="24" stroke-dasharray="8.8 439.8" stroke-dashoffset="-431.1" transform="rotate(-90 90 90)"/>
+                    <text x="90" y="86" text-anchor="middle" font-size="20" font-weight="800" fill="#e6ecf8">2h 28m</text>
+                    <text x="90" y="106" text-anchor="middle" font-size="10" fill="#8b98b6">today</text>
+                  </svg>
+                  <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#f59e0b"></span><span class="lname">Entertainment</span><span class="ltime">1h 25m</span><span class="lpct">52%</span></div>
+                    <div class="legend-item"><span class="dot" style="background:#ec4899"></span><span class="lname">Social</span><span class="ltime">34m</span><span class="lpct">21%</span></div>
+                    <div class="legend-item"><span class="dot" style="background:#3b82f6"></span><span class="lname">Work</span><span class="ltime">29m</span><span class="lpct">18%</span></div>
+                    <div class="legend-item"><span class="dot" style="background:#10b981"></span><span class="lname">Learning</span><span class="ltime">12m</span><span class="lpct">7%</span></div>
+                    <div class="legend-item"><span class="dot" style="background:#64748b"></span><span class="lname">Other</span><span class="ltime">8m</span><span class="lpct">5%</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-h">
+                  <h3>Daily trend</h3>
+                  <div class="seg">
+                    <button type="button">7d</button>
+                    <button class="active" type="button">14d</button>
+                    <button type="button">30d</button>
+                  </div>
+                </div>
+                <div class="barchart">
+                  <div class="grid-line" style="bottom:0%"><span>0m</span></div>
+                  <div class="grid-line" style="bottom:25%"><span>1h</span></div>
+                  <div class="grid-line" style="bottom:50%"><span>2h</span></div>
+                  <div class="grid-line" style="bottom:75%"><span>3h</span></div>
+                  <div class="grid-line" style="bottom:100%"><span>4h</span></div>
+                  <div class="bars">
+                    <div class="bar-col"><div class="bar" style="height:46%" title="22 Aug · 1h 50m"></div><span class="bar-lab">22</span></div>
+                    <div class="bar-col"><div class="bar" style="height:58%" title="23 Aug · 2h 19m"></div><span class="bar-lab">23</span></div>
+                    <div class="bar-col"><div class="bar" style="height:72%" title="24 Aug · 2h 52m"></div><span class="bar-lab">24</span></div>
+                    <div class="bar-col"><div class="bar" style="height:38%" title="25 Aug · 1h 31m"></div><span class="bar-lab">25</span></div>
+                    <div class="bar-col"><div class="bar" style="height:64%" title="26 Aug · 2h 33m"></div><span class="bar-lab">26</span></div>
+                    <div class="bar-col"><div class="bar" style="height:80%" title="27 Aug · 3h 12m"></div><span class="bar-lab">27</span></div>
+                    <div class="bar-col"><div class="bar" style="height:52%" title="28 Aug · 2h 5m"></div><span class="bar-lab">28</span></div>
+                    <div class="bar-col"><div class="bar" style="height:44%" title="29 Aug · 1h 46m"></div><span class="bar-lab">29</span></div>
+                    <div class="bar-col"><div class="bar" style="height:68%" title="30 Aug · 2h 43m"></div><span class="bar-lab">30</span></div>
+                    <div class="bar-col"><div class="bar" style="height:76%" title="31 Aug · 3h 2m"></div><span class="bar-lab">31</span></div>
+                    <div class="bar-col"><div class="bar" style="height:60%" title="1 Sep · 2h 24m"></div><span class="bar-lab">1</span></div>
+                    <div class="bar-col"><div class="bar" style="height:84%" title="2 Sep · 3h 22m"></div><span class="bar-lab">2</span></div>
+                    <div class="bar-col"><div class="bar" style="height:70%" title="3 Sep · 2h 48m"></div><span class="bar-lab">3</span></div>
+                    <div class="bar-col"><div class="bar today" style="height:62%" title="4 Sep · 2h 28m (today)"></div><span class="bar-lab">4</span></div>
+                  </div>
+                  <div class="goal-line" style="bottom:92%"><span>goal 4h</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-h">
+                <h3>When you're online</h3>
+                <div class="heat-legend">less <i style="background:rgba(99,102,241,.15)"></i><i style="background:rgba(99,102,241,.4)"></i><i style="background:rgba(99,102,241,.7)"></i><i style="background:rgba(99,102,241,1)"></i> more &nbsp;·&nbsp; avg of last 7 days</div>
+              </div>
+              <div class="heat">
+                <div class="heat-cell" style="background:rgba(99,102,241,.06)" title="12 AM · 3m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.04)" title="1 AM · 1m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.03)" title="2 AM · 0m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.03)" title="3 AM · 0m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.03)" title="4 AM · 0m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.05)" title="5 AM · 2m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.12)" title="6 AM · 6m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.22)" title="7 AM · 12m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.35)" title="8 AM · 19m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.42)" title="9 AM · 23m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.5)" title="10 AM · 27m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.44)" title="11 AM · 24m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.38)" title="12 PM · 21m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.33)" title="1 PM · 18m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.3)" title="2 PM · 16m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.36)" title="3 PM · 20m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.48)" title="4 PM · 26m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.58)" title="5 PM · 31m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.66)" title="6 PM · 35m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.74)" title="7 PM · 40m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.82)" title="8 PM · 44m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.9)" title="9 PM · 48m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,1)" title="10 PM · 53m"></div>
+                <div class="heat-cell" style="background:rgba(99,102,241,.62)" title="11 PM · 33m"></div>
+              </div>
+              <div class="heat-labs">
+                <span>12a</span><span></span><span></span><span>3a</span><span></span><span></span><span>6a</span><span></span><span></span><span>9a</span><span></span><span></span><span>12p</span><span></span><span></span><span>3p</span><span></span><span></span><span>6p</span><span></span><span></span><span>9p</span><span></span><span></span>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-h"><h3>Top sites · Today</h3><span class="sub">click a site for details</span></div>
+              <div>
+                <div class="trow"><div class="favicon letter" style="background:hsl(246,55%,45%)">Y</div><div class="tname">youtube.com</div><div class="minibar"><i style="width:100%; background:#f59e0b"></i></div><div class="ttime">1h 25m</div><div class="tpct">48%</div></div>
+                <div class="trow"><div class="favicon letter" style="background:hsl(221,55%,45%)">I</div><div class="tname">instagram.com</div><div class="minibar"><i style="width:40%; background:#ec4899"></i></div><div class="ttime">34m 12s</div><div class="tpct">19%</div></div>
+                <div class="trow"><div class="favicon letter" style="background:hsl(318,55%,45%)">G</div><div class="tname">github.com</div><div class="minibar"><i style="width:34%; background:#3b82f6"></i></div><div class="ttime">29m 3s</div><div class="tpct">16%</div></div>
+                <div class="trow"><div class="favicon letter" style="background:hsl(252,55%,45%)">G</div><div class="tname">google.com</div><div class="minibar"><i style="width:14%; background:#8b5cf6"></i></div><div class="ttime">12m 30s</div><div class="tpct">7%</div></div>
+                <div class="trow"><div class="favicon letter" style="background:hsl(182,55%,45%)">C</div><div class="tname">chatgpt.com</div><div class="minibar"><i style="width:13%; background:#3b82f6"></i></div><div class="ttime">11m 8s</div><div class="tpct">6%</div></div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ═══ SITES ═══ -->
+        <section class="tab" id="tab-sites">
+          <div id="sites-body">
+
+            <!-- static demo content (dashboard.js replaces this with real data) -->
+            <div class="toolbar">
+              <input class="search" type="text" placeholder="Search sites…" />
+              <div class="chips">
+                <span class="chip active">All</span>
+                <span class="chip"><i style="background:#3b82f6"></i>Work</span>
+                <span class="chip"><i style="background:#ec4899"></i>Social</span>
+                <span class="chip"><i style="background:#f59e0b"></i>Entertainment</span>
+                <span class="chip"><i style="background:#10b981"></i>Learning</span>
+                <span class="chip"><i style="background:#f97316"></i>Shopping</span>
+              </div>
+              <select class="sortsel"><option>Sort: Today</option><option>Sort: 7 days</option><option>Sort: All time</option></select>
+            </div>
+            <div class="stable">
+              <div class="srow-h">
+                <div>Site</div><div>Category</div><div class="scell" style="text-align:right">Today</div><div class="scell" style="text-align:right">7 days</div><div class="scell" style="text-align:right">All time</div><div>Share today</div><div style="text-align:right">Trend</div>
+              </div>
+              <div class="srow">
+                <div class="sitecell"><div class="favicon letter" style="background:hsl(246,55%,45%)">Y</div><div class="scell">youtube.com</div></div>
+                <div><span class="cat-chip"><i style="background:#f59e0b"></i>Entertainment</span></div>
+                <div class="scell num">1h 25m</div>
+                <div class="scell num">8h 12m</div>
+                <div class="scell num">41h 30m</div>
+                <div><div class="share"><i style="width:100%; background:#f59e0b"></i></div></div>
+                <div><div class="spark"><i style="height:60%"></i><i style="height:80%"></i><i style="height:45%"></i><i style="height:90%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:85%"></i></div></div>
+              </div>
+              <div class="srow">
+                <div class="sitecell"><div class="favicon letter" style="background:hsl(221,55%,45%)">I</div><div class="scell">instagram.com</div></div>
+                <div><span class="cat-chip"><i style="background:#ec4899"></i>Social</span></div>
+                <div class="scell num">34m 12s</div>
+                <div class="scell num">3h 5m</div>
+                <div class="scell num">22h 8m</div>
+                <div><div class="share"><i style="width:40%; background:#ec4899"></i></div></div>
+                <div><div class="spark"><i style="height:40%"></i><i style="height:55%"></i><i style="height:70%"></i><i style="height:35%"></i><i style="height:60%"></i><i style="height:50%"></i><i style="height:45%"></i></div></div>
+              </div>
+              <div class="srow">
+                <div class="sitecell"><div class="favicon letter" style="background:hsl(318,55%,45%)">G</div><div class="scell">github.com</div></div>
+                <div><span class="cat-chip"><i style="background:#3b82f6"></i>Work</span></div>
+                <div class="scell num">29m 3s</div>
+                <div class="scell num">2h 40m</div>
+                <div class="scell num">18h 45m</div>
+                <div><div class="share"><i style="width:34%; background:#3b82f6"></i></div></div>
+                <div><div class="spark"><i style="height:30%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:75%"></i><i style="height:40%"></i><i style="height:85%"></i><i style="height:45%"></i></div></div>
+              </div>
+            </div>
+            <p class="footnote">Tip: click any row to see a 14-day history, change its category, or check its daily limit.</p>
+
+          </div>
+        </section>
+
+        <!-- ═══ INSIGHTS ═══ -->
+        <section class="tab" id="tab-insights">
+          <div id="ins-body">
+
+            <!-- static demo content (dashboard.js replaces this with real data) -->
+            <div class="icards">
+              <div class="icard"><div class="emoji">📅</div><div class="t">This week vs last week</div><div class="v">17h 26m</div><div class="s"><b class="good">▼ 12%</b> compared to last week's 19h 44m</div></div>
+              <div class="icard"><div class="emoji">🏆</div><div class="t">Top category this week</div><div class="v">Entertainment</div><div class="s">8h 5m — Entertainment leads your screen time</div></div>
+              <div class="icard"><div class="emoji">⚡</div><div class="t">Productivity score</div><div class="v">31%</div><div class="s">share of Work + Learning in this week's screen time</div></div>
+              <div class="icard"><div class="emoji">🌙</div><div class="t">Peak usage hour</div><div class="v">9 – 10 PM</div><div class="s">Your busiest hour, on average (last 7 days)</div></div>
+              <div class="icard"><div class="emoji">📈</div><div class="t">Most increased</div><div class="v">youtube.com</div><div class="s"><b class="bad">+1h 20m</b> more than last week</div></div>
+              <div class="icard"><div class="emoji">📉</div><div class="t">Most reduced</div><div class="v">instagram.com</div><div class="s"><b class="good">−45m</b> less than last week. Nice!</div></div>
+              <div class="icard"><div class="emoji">🎯</div><div class="t">Goal streak</div><div class="v">5 of 7 days</div><div class="s">under your 4h daily goal this week</div></div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ═══ SETTINGS ═══ -->
+        <section class="tab" id="tab-settings">
+          <div id="set-body">
+
+            <!-- static demo content (dashboard.js replaces this with real data) -->
+            <div class="set-grid">
+              <div class="panel" style="margin-top:0">
+                <div class="panel-h"><h3>🎯 Daily goal &amp; alerts</h3></div>
+                <div class="field">
+                  <label for="goalInput">Daily screen-time goal (minutes)</label>
+                  <input id="goalInput" type="number" min="0" max="1440" step="15" value="240" />
+                  <div class="hint">0 = goal off. The badge turns amber at 75% and red when you cross the goal.</div>
+                </div>
+                <div class="switch-row">
+                  <span class="sl">Goal &amp; limit alerts</span>
+                  <span class="switch"><input type="checkbox" checked /><span class="knob"></span></span>
+                </div>
+                <div class="switch-row">
+                  <span class="sl">Daily summary (yesterday recap)</span>
+                  <span class="switch"><input type="checkbox" checked /><span class="knob"></span></span>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:0">
+                <div class="panel-h"><h3>⏳ Site limits</h3></div>
+                <div class="field">
+                  <label for="limDomain">Add a limit</label>
+                  <input id="limDomain" type="text" placeholder="e.g. youtube.com" />
+                  <div class="hint">You'll get one notification per day when a limit is crossed.</div>
+                </div>
+                <div>
+                  <div class="limit-row"><span class="lr-d">youtube.com</span><span class="lr-m">60m</span><button type="button" title="Remove">✕</button></div>
+                  <div class="limit-row"><span class="lr-d">instagram.com</span><span class="lr-m">30m</span><button type="button" title="Remove">✕</button></div>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:0">
+                <div class="panel-h"><h3>🌍 Web dashboard</h3></div>
+                <div class="field">
+                  <label>Hosted page URL (redirect)</label>
+                  <input type="text" placeholder="https://your-site.github.io/screen-time-tracker/" />
+                  <div class="hint">Export the page, upload <b>index.html</b> to your host, then paste its URL here — a 🌐 button appears in the popup.</div>
+                </div>
+                <div class="btn-row"><button class="btn primary" type="button">🌍 Export web page (index.html)</button></div>
+                <div class="hint">Single self-contained HTML file with all your data baked in — works anywhere, no server needed.</div>
+              </div>
+
+              <div class="panel" style="margin-top:0">
+                <div class="panel-h"><h3>🎨 Appearance</h3></div>
+                <div class="btn-row">
+                  <button class="btn primary" type="button">🌙 Dark</button>
+                  <button class="btn" type="button">☀️ Light</button>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:0">
+                <div class="panel-h"><h3>💾 Data</h3></div>
+                <div class="btn-row">
+                  <button class="btn" type="button">⬇️ Backup JSON</button>
+                  <button class="btn" type="button">📄 Export CSV</button>
+                  <button class="btn" type="button">⬆️ Import JSON</button>
+                </div>
+                <div class="btn-row" style="margin-top:10px">
+                  <button class="btn" type="button">Reset today</button>
+                  <button class="btn" type="button">Reset everything</button>
+                </div>
+                <p class="footnote">Everything is stored locally in your browser (<code>chrome.storage.local</code>). Nothing is ever uploaded. Export gives you a full JSON backup of days, totals and settings.</p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+// ── Shared site-category rules (used by popup + dashboard) ──────────────────
+
+var CATEGORIES = [
+  {
+    id: 'work', label: 'Work', color: '#3b82f6',
+    domains: ['github.com', 'gitlab.com', 'stackoverflow.com', 'notion.so',
+      'figma.com', 'slack.com', 'zoom.us', 'teams.microsoft.com', 'office.com',
+      'outlook.com', 'atlassian.net', 'linear.app', 'asana.com', 'trello.com',
+      'clickup.com', 'vercel.com', 'netlify.com', 'openai.com', 'chatgpt.com',
+      'claude.ai', 'gemini.google.com', 'mail.google.com', 'gmail.com',
+      'calendar.google.com', 'drive.google.com', 'docs.google.com',
+      'sheets.google.com', 'slides.google.com', 'aws.amazon.com',
+      'cloud.google.com', 'azure.microsoft.com', 'digitalocean.com',
+      'bitbucket.org', 'basecamp.com', 'monday.com', 'workplace.com']
+  },
+  {
+    id: 'social', label: 'Social', color: '#ec4899',
+    domains: ['facebook.com', 'instagram.com', 'twitter.com', 'x.com',
+      'threads.net', 'whatsapp.com', 'web.whatsapp.com', 'telegram.org',
+      'web.telegram.org', 'snapchat.com', 'linkedin.com', 'reddit.com',
+      'pinterest.com', 'discord.com', 'quora.com', 'tumblr.com',
+      'mastodon.social', 'hinge.co', 'tinder.com', 'bumble.com']
+  },
+  {
+    id: 'entertainment', label: 'Entertainment', color: '#f59e0b',
+    domains: ['youtube.com', 'youtu.be', 'netflix.com', 'primevideo.com',
+      'hotstar.com', 'disneyplus.com', 'jiocinema.com', 'twitch.tv',
+      'mxplayer.in', 'spotify.com', 'soundcloud.com', 'sonyliv.com',
+      'zee5.com', 'imdb.com', 'crunchyroll.com', 'steamcommunity.com',
+      'roblox.com', 'pbskids.org', 'voot.com']
+  },
+  {
+    id: 'learning', label: 'Learning', color: '#10b981',
+    domains: ['khanacademy.org', 'coursera.org', 'udemy.com', 'edx.org',
+      'duolingo.com', 'w3schools.com', 'geeksforgeeks.org', 'leetcode.com',
+      'hackerrank.com', 'codecademy.com', 'freecodecamp.org',
+      'developer.mozilla.org', 'nptel.ac.in', 'byjus.com', 'pw.live',
+      'toppr.com', 'vedantu.com', 'unacademy.com', 'brainly.in',
+      'tutorialspoint.com', 'javatpoint.com', 'programiz.com']
+  },
+  {
+    id: 'shopping', label: 'Shopping', color: '#f97316',
+    domains: ['amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com',
+      'meesho.com', 'ajio.com', 'nykaa.com', 'ebay.com', 'walmart.com',
+      'aliexpress.com', 'bigbasket.com', 'zepto.com', 'blinkit.com',
+      'swiggy.com', 'zomato.com', 'dominos.in', 'shopify.com',
+      'tatacliq.com', 'croma.com', 'reliancedigital.in', 'firstcry.com']
+  },
+  {
+    id: 'news', label: 'News', color: '#06b6d4',
+    domains: ['news.google.com', 'timesofindia.indiatimes.com',
+      'indianexpress.com', 'hindustantimes.com', 'ndtv.com', 'bbc.com',
+      'cnn.com', 'republicworld.com', 'abplive.com', 'dnaindia.com',
+      'techcrunch.com', 'theverge.com', 'wired.com', 'arstechnica.com',
+      'thehindu.com', 'livemint.com', 'economictimes.indiatimes.com',
+      'espn.com', 'cricbuzz.com', 'sportskeeda.com']
+  },
+  {
+    id: 'search', label: 'Search', color: '#8b5cf6',
+    domains: ['google.com', 'bing.com', 'duckduckgo.com', 'yahoo.com',
+      'search.brave.com', 'ecosia.org', 'yandex.com', 'baidu.com',
+      'perplexity.ai', 'wikipedia.org']
+  },
+  {
+    id: 'other', label: 'Other', color: '#64748b',
+    domains: []
+  }
+];
+
+var CATEGORY_MAP = {};
+CATEGORIES.forEach(function (c) { CATEGORY_MAP[c.id] = c; });
+
+function categoryById(id) {
+  return CATEGORY_MAP[id] || CATEGORY_MAP.other;
+}
+
+// exact match first, then subdomain suffix match; user override wins
+function classifySite(domain, overrides) {
+  if (overrides && overrides[domain]) {
+    var ov = CATEGORY_MAP[overrides[domain]];
+    if (ov) return ov;
+  }
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    if (CATEGORIES[i].domains.indexOf(domain) !== -1) return CATEGORIES[i];
+  }
+  for (var j = 0; j < CATEGORIES.length; j++) {
+    var doms = CATEGORIES[j].domains;
+    for (var k = 0; k < doms.length; k++) {
+      if (domain.endsWith('.' + doms[k])) return CATEGORIES[j];
+    }
+  }
+  return CATEGORY_MAP.other;
+}
+
+</script>
+  <script>
+window.SCREEN_TIME_DATA = {"exportedAt":"2026-09-04T08:04:11.710Z","days":{"2026-08-15":{"sites":{"youtube.com":7414,"google.com":1672,"instagram.com":1559,"chatgpt.com":3504,"amazon.in":1280,"netflix.com":5708,"wikipedia.org":922,"news.google.com":751,"leetcode.com":1729,"whatsapp.com":934},"hours":[0,0,0,0,0,0,0,0,1355.3927107946947,776.7298375954852,3073.35449115932,1142.703160783276,0,0,0,2633.8597248960286,0,0,980.9400032507256,5626.256126833148,4722.481865748763,3297.54462483339,308.93586939480156,1554.801584710367]},"2026-08-16":{"sites":{"youtube.com":5851,"google.com":1039,"github.com":2036,"instagram.com":3148,"chatgpt.com":1441,"amazon.in":931,"netflix.com":5219,"wikipedia.org":781,"news.google.com":1146,"whatsapp.com":3067},"hours":[0,0,0,0,0,0,0,0,2217.620286556892,1041.7422705329955,622.5286739049479,416.47132609505206,0,1427.5204240344465,1363.1726574413478,621.9961007125676,1244.8864950509742,0,3141.814186547883,4537.769882334396,393.17586093675345,1138.4797974387184,3329.234098349698,3162.5879400633276]},"2026-08-17":{"sites":{"google.com":2081,"instagram.com":2241,"chatgpt.com":1782,"amazon.in":1504,"netflix.com":2325,"news.google.com":181,"leetcode.com":1119,"whatsapp.com":535},"hours":[0,0,0,0,0,0,0,0,0,2152.0504197338596,580.5372511502355,320.05031844601035,339.9317770693451,0,0,440.93983022030443,0,747.2255824366584,0,2724.412430403754,1034.7744175633416,1699.0682229306549,1034.0961352633312,694.9136147825047]},"2026-08-18":{"sites":{"youtube.com":4846,"google.com":1737,"github.com":2668,"instagram.com":1940,"chatgpt.com":2418,"amazon.in":334,"netflix.com":2447,"news.google.com":897,"leetcode.com":2440},"hours":[0,0,0,0,0,0,0,0,390.9641463076696,517.5312400795519,334,2359.167872252874,365.07031561341137,1894.5288942232728,0,0,1692.0984738506377,618.0737326219678,2450.725981174037,1542.5656966930255,3420.4056911384687,897,2159.4739480530843,1085.3940079919994]},"2026-08-19":{"sites":{"google.com":716,"github.com":4259,"instagram.com":2426,"chatgpt.com":2544,"stackoverflow.com":972,"amazon.in":337,"netflix.com":2201,"wikipedia.org":913},"hours":[0,0,0,0,0,0,0,0,0,933.8333952007815,0,0,0,302.5198875227943,0,2255.628898561001,1025.41475905478,2449.094337900169,1995.383080676198,2587.755438167602,0,1071.6856816429645,0,1746.6845212737098]},"2026-08-20":{"sites":{"youtube.com":3889,"instagram.com":2572,"chatgpt.com":711,"amazon.in":1345,"netflix.com":1764,"leetcode.com":1462,"whatsapp.com":1453},"hours":[0,0,0,0,0,0,0,0,744.2734306184575,0,654.7676739869639,0,0,1596.9739947700873,0,0,419.39801881089807,49.39610446896404,927.6840374702588,570.4198240330443,986.053829267621,1046.2241793386638,1345,4855.808907235041]},"2026-08-21":{"sites":{"youtube.com":5067,"google.com":1431,"github.com":5273,"instagram.com":3404,"amazon.in":811,"netflix.com":3403,"leetcode.com":1914,"whatsapp.com":1940},"hours":[0,0,0,0,0,0,0,0,1395.3748047370464,0,659.5096667166799,0,972.7067691972479,777.3065387271345,2133.3555039949715,0,3409.483822499402,0,2426.644412042573,2598.636700268835,0,2410.360179003328,5619.922326559201,839.699276253581]},"2026-08-22":{"sites":{"google.com":1075,"github.com":1806,"instagram.com":4669,"chatgpt.com":1924,"amazon.in":484,"netflix.com":2518,"wikipedia.org":704,"leetcode.com":2912,"whatsapp.com":882},"hours":[0,0,0,0,0,0,0,0,1541.2737304111943,0,0,0,1586.4768043132499,0,382.72626958880574,441.52332628145814,1874.9829330649227,940.2567328307778,0,3322.6238653361797,2574.2786125279963,360.0684169912711,3949.7893086541444,0]},"2026-08-23":{"sites":{"youtube.com":4290,"google.com":1911,"github.com":5199,"instagram.com":1319,"stackoverflow.com":1304,"netflix.com":3921,"wikipedia.org":839,"leetcode.com":1374},"hours":[0,0,0,0,0,0,0,0,2606.6557511510327,2870.9434169344604,0,961.6247482728213,839,465.29067582450807,1176.0616585146636,0,1930.9591199504212,1376.5100884018466,0,2500.238316343166,336.00760479457676,350.15188443940133,4199.006754171103,544.5499812019989]},"2026-08-24":{"sites":{"youtube.com":5826,"google.com":1007,"instagram.com":2750,"chatgpt.com":2073,"stackoverflow.com":937,"amazon.in":1395,"netflix.com":1382,"leetcode.com":1754,"whatsapp.com":1484},"hours":[0,0,0,0,0,0,0,0,1610.8745466442779,0,628.5471104905009,918.8276962609962,1002.968523837626,995.0454387748614,0,2866.6051941858605,0,709.6965015213937,4431.8506142590195,1702.8873187256977,1621.0438841488212,1434.3496726723388,685.3034984786063,0]},"2026-08-25":{"sites":{"google.com":1443,"instagram.com":1972,"chatgpt.com":1991,"stackoverflow.com":457,"amazon.in":2092,"netflix.com":2216,"wikipedia.org":316,"news.google.com":864,"leetcode.com":1118},"hours":[0,0,0,0,0,0,0,0,1100.841057789512,0,0,1762.7039548074827,1272.6181547939777,416.01053550839424,439.9537636283785,775.3506635315716,137.29604519251734,316,0,1434.656463819556,0,1240.8439795421436,2226.943601093255,1345.7817802932113]},"2026-08-26":{"sites":{"youtube.com":2499,"google.com":1992,"instagram.com":1455,"chatgpt.com":1826,"stackoverflow.com":835,"amazon.in":1754,"netflix.com":3411,"wikipedia.org":1474,"leetcode.com":1043,"whatsapp.com":1891},"hours":[0,0,0,0,0,0,0,0,0,1650.093288696371,0,1882.677127853036,712.0769571745768,0,1891.906711303629,452.91609428822994,0,0,2246.8420178154483,3109.8975518755615,3237.280908917077,579.9171390943229,544.5810633944348,1871.811139587313]},"2026-08-27":{"sites":{"youtube.com":2746,"github.com":3359,"instagram.com":2882,"chatgpt.com":1738,"stackoverflow.com":1062,"amazon.in":1831,"netflix.com":4238,"wikipedia.org":517,"news.google.com":414,"leetcode.com":1494},"hours":[0,0,0,0,0,0,0,0,255.509333467111,0,0,1746.3795813499019,2019.0835172114894,609.252940828912,2401.465586141683,0,1051.7377907754853,356.7552713910118,1284.1956810560077,442.5233812769875,5434.537547728047,1004.8155480399728,2780.8428190639243,893.9010016694665]},"2026-08-28":{"sites":{"google.com":1506,"github.com":4234,"stackoverflow.com":1232,"amazon.in":1544,"netflix.com":3149,"leetcode.com":2667},"hours":[0,0,0,0,0,0,0,0,2928.750337357633,0,1077.0542866783217,0,352.3783899843693,0,1696.9688323456794,0,0,1628.649440780282,744.4216716801748,0,0,2217.8199109556153,1285.8575117541477,2400.099618463777]},"2026-08-29":{"sites":{"youtube.com":6820,"google.com":1275,"github.com":1825,"instagram.com":3492,"chatgpt.com":2386,"stackoverflow.com":663,"amazon.in":1484,"wikipedia.org":1439,"news.google.com":653,"leetcode.com":1211,"whatsapp.com":1945},"hours":[0,0,0,0,0,0,0,0,0,1253.231154824607,0,2168.8055703649297,0,2685.88633001782,1269.4293644819409,106.18025520816445,366.6592607740313,1418.2719248058274,2329.7995774121955,6044.767359293066,1328.5846759798005,2201.9692028174177,1211,808.4153240201995]},"2026-08-30":{"sites":{"google.com":2958,"github.com":4410,"instagram.com":934,"chatgpt.com":878,"stackoverflow.com":1271,"amazon.in":2711,"netflix.com":1805,"wikipedia.org":1419,"news.google.com":540,"leetcode.com":2497,"whatsapp.com":2395},"hours":[0,0,0,0,0,0,0,0,3049.34246444609,807.226358383894,1099.3283542618155,1813.4439868479967,0,0,0,1843.6319139087573,0,667.8951084148139,1793.2320931358263,3362.398346592672,2352.644208376296,3131.872792502865,827.0338298287243,1069.9505433002487]},"2026-08-31":{"sites":{"youtube.com":3047,"google.com":1039,"stackoverflow.com":598,"amazon.in":1797,"netflix.com":4007,"wikipedia.org":807,"whatsapp.com":2270},"hours":[0,0,0,0,0,0,0,0,1408.6442784871906,331.5705535337329,388.3557215128094,356.79716958478093,0,707.4294464662671,0,598,2241.7049921583384,563.3170128101483,1919.1390335587785,0,1127.8609664412215,934.5374890416861,1411.8599226465449,1575.7834137585014]},"2026-09-01":{"sites":{"youtube.com":5054,"google.com":521,"stackoverflow.com":498,"amazon.in":1250,"netflix.com":4649,"whatsapp.com":1911},"hours":[0,0,0,0,0,0,0,0,336.0721632037312,0,639.8693797644228,0,521,0,796.339921024628,640.051370440051,0,1809.6904279161245,1681.3417938072234,1143.5860429890454,939.7060586847365,1499.442714289762,1807.9182806191966,2067.9818472610787]},"2026-09-02":{"sites":{"youtube.com":4570,"google.com":926,"github.com":3285,"instagram.com":1211,"chatgpt.com":2138,"stackoverflow.com":992,"amazon.in":1334,"netflix.com":3428,"news.google.com":236,"leetcode.com":2529,"whatsapp.com":2365},"hours":[0,0,0,0,0,0,0,0,1320.2346986131743,3.126693376339972,1039.2586728790775,1945.7337138941512,1211,0,2197.6082780221477,2928.306888859719,922.87330662366,426.20327866170555,1198.7556713400409,2185.095559246838,0,3985.1298368507996,1052.2007430065423,2598.472658625804]},"2026-09-03":{"sites":{"google.com":309,"github.com":1315,"chatgpt.com":2264,"stackoverflow.com":913,"amazon.in":1000,"netflix.com":2345,"wikipedia.org":519,"news.google.com":668,"leetcode.com":2496,"whatsapp.com":1030},"hours":[0,0,0,0,0,0,0,0,1263.6313075432554,1475.6804770091549,27.584212633781135,687.6021174583584,0,576.7278479980305,1100.0906915264204,309,0,0,1247.6248539285734,668,2239.4123608246446,0,2007.0584919024259,1256.5876391753554]},"2026-09-04":{"sites":{"google.com":1854,"github.com":3317,"instagram.com":1581,"amazon.in":2002,"netflix.com":1361,"wikipedia.org":648,"news.google.com":760,"whatsapp.com":2080},"hours":[0,0,0,0,0,0,0,0,0,931.7862113937736,1148.2137886062264,613.0904462886974,0,2219.871809247881,932.8431641450152,0,397.43159415666014,957.3551165638492,760,2403.5266295503825,2135.357983200811,24.50780695863068,403.64488343615085,675.3705664519221]}},"total":{"youtube.com":61919,"google.com":26492,"instagram.com":39555,"chatgpt.com":29618,"amazon.in":27220,"netflix.com":61497,"wikipedia.org":11298,"news.google.com":7110,"leetcode.com":29759,"whatsapp.com":26182,"github.com":42986,"stackoverflow.com":11734},"settings":{"dailyGoalMinutes":240,"alerts":true,"dailySummary":true,"siteLimits":{"youtube.com":90},"categoryOverrides":{},"theme":"dark","webUrl":""}};
+</script>
+<script>
+// ── Screen Time Tracker v3 · dashboard ──────────────────────────────────────
+// Two modes:
+//   • Extension mode — reads/writes chrome.storage.local (live)
+//   • Snapshot mode  — window.SCREEN_TIME_DATA is embedded by the
+//     "Export web page" feature, so the file works on any static host
+//       (GitHub Pages, Netlify, USB stick…). Read-only.
+
+(function () {
+  'use strict';
+
+  var EMBED = (typeof window !== 'undefined' && typeof window.SCREEN_TIME_DATA !== 'undefined');
+  var hasChrome = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
+  if (!EMBED && !hasChrome) return; // static preview keeps its demo markup
+
+  var DEFAULTS = {
+    dailyGoalMinutes: 240,
+    alerts: true,
+    dailySummary: true,
+    siteLimits: {},
+    categoryOverrides: {},
+    theme: 'dark',
+    webUrl: '',
+  };
+
+  var WD = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  var TITLES = { overview: 'Overview', sites: 'Sites', insights: 'Insights', settings: 'Settings' };
+
+  var settings = Object.assign({}, DEFAULTS);
+  var days = {};
+  var total = {};
+
+  var activeTab = 'overview';
+  var sortMode = 'today';
+  var searchText = '';
+  var catFilter = 'all';
+  var expandedSite = null;
+  var barCount = 14;
+  var settingsDirty = false;
+
+  var saveTimer = null;
+  var renderTimer = null;
+
+  // ── utils ────────────────────────────────────────────────────────────────
+
+  function $(sel, root) { return (root || document).querySelector(sel); }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function keyOf(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  function dateKeys(n) {
+    var a = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      a.push(keyOf(d));
+    }
+    return a;
+  }
+
+  function daySites(key) {
+    var d = days[key];
+    return (d && d.sites) ? d.sites : {};
+  }
+
+  function dayHours(key) {
+    var d = days[key];
+    return (d && d.hours) ? d.hours : new Array(24).fill(0);
+  }
+
+  function sumSites(obj) {
+    var s = 0;
+    for (var k in obj) s += obj[k];
+    return s;
+  }
+
+  function fmtTime(secs) {
+    secs = Math.round(secs);
+    if (secs < 1) return '0m';
+    if (secs < 60) return secs + 's';
+    var m = Math.floor(secs / 60);
+    var h = Math.floor(m / 60);
+    if (h > 0) return h + 'h ' + (m % 60) + 'm';
+    return m + 'm ' + (secs % 60) + 's';
+  }
+
+  function fmtCell(secs) { return secs >= 1 ? fmtTime(secs) : '—'; }
+
+  function fmtAxis(secs) {
+    if (secs >= 3600) {
+      var h = secs / 3600;
+      return (h % 1 === 0 ? h : h.toFixed(1)) + 'h';
+    }
+    return Math.round(secs / 60) + 'm';
+  }
+
+  function hourLabel(i) {
+    var h = i % 12 === 0 ? 12 : i % 12;
+    return h + (i < 12 ? ' AM' : ' PM');
+  }
+
+  function hourShort(i) {
+    var h = i % 12 === 0 ? 12 : i % 12;
+    return h + (i < 12 ? 'a' : 'p');
+  }
+
+  function avatarColor(domain) {
+    var h = 0;
+    for (var i = 0; i < domain.length; i++) h = (h * 31 + domain.charCodeAt(i)) % 360;
+    return 'hsl(' + h + ', 55%, 45%)';
+  }
+
+  function faviconHTML(domain) {
+    return '<img class="favicon" data-domain="' + esc(domain) + '" alt="" ' +
+      'src="https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64">';
+  }
+
+  function download(filename, content, mime) {
+    var blob = new Blob([content], { type: mime || 'application/octet-stream' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+  }
+
+  // CSP-safe favicon fallback: swap broken images for letter avatars
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && t.classList.contains('favicon')) {
+      var d = document.createElement('div');
+      d.className = 'favicon letter';
+      d.style.background = avatarColor(t.getAttribute('data-domain') || '?');
+      d.textContent = (t.getAttribute('data-domain') || '?').charAt(0).toUpperCase();
+      t.replaceWith(d);
+    }
+  }, true);
+
+  // ── data ─────────────────────────────────────────────────────────────────
+
+  async function loadData() {
+    if (EMBED) {
+      var std = window.SCREEN_TIME_DATA || {};
+      days = std.days || {};
+      total = std.total || {};
+      settings = Object.assign({}, DEFAULTS, std.settings || {});
+      applyTheme(settings.theme || 'dark');
+      return;
+    }
+    var got;
+    try {
+      got = await chrome.storage.local.get(['days', 'total', 'settings']);
+    } catch (_) {
+      return;
+    }
+    days = got.days || {};
+    total = got.total || {};
+    settings = Object.assign({}, DEFAULTS, got.settings || {});
+    applyTheme(settings.theme || 'dark');
+  }
+
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+    var tb = $('#themeBtn');
+    if (tb) tb.textContent = t === 'light' ? '🌙 Dark mode' : '☀️ Light mode';
+  }
+
+  async function setTheme(t) {
+    settings.theme = t;
+    applyTheme(t);
+    await saveSettings();
+    if (!EMBED && activeTab === 'settings') renderSettings();
+  }
+
+  async function saveSettings() {
+    if (EMBED) return; // read-only snapshot
+    await chrome.storage.local.set({ settings: settings });
+    flashSaved('Saved ✓');
+  }
+
+  function flashSaved(msg) {
+    var t = $('#toast');
+    if (!t) return;
+    t.textContent = msg || 'Saved ✓';
+    t.classList.add('show');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+  }
+
+  function hasData() { return Object.keys(total).length > 0; }
+
+  function emptyHTML() {
+    return '<div class="panel"><div class="empty">No data yet 😴<br>Open some websites — the dashboard fills up automatically!<br><small>Tracking runs quietly in the background while you browse.</small></div></div>';
+  }
+
+  // category totals across a set of day keys
+  function catTotals(keys) {
+    var by = {};
+    keys.forEach(function (k) {
+      var s = daySites(k);
+      Object.keys(s).forEach(function (d) {
+        var c = classifySite(d, settings.categoryOverrides);
+        by[c.id] = by[c.id] || { cat: c, secs: 0 };
+        by[c.id].secs += s[d];
+      });
+    });
+    return Object.keys(by).map(function (id) { return by[id]; })
+      .sort(function (a, b) { return b.secs - a.secs; });
+  }
+
+  function catChip(cat) {
+    return '<span class="cat-chip" style="--c:' + cat.color + '"><i></i>' + cat.label + '</span>';
+  }
+
+  // ── charts ───────────────────────────────────────────────────────────────
+
+  function donutHTML(segs, totalSecs) {
+    var C = 439.8; // 2πr, r = 70
+    var s = '<svg class="donut" viewBox="0 0 180 180" aria-hidden="true">';
+    s += '<circle cx="90" cy="90" r="70" fill="none" stroke-width="24" style="stroke:var(--track)"/>';
+    var acc = 0;
+    if (totalSecs > 0) {
+      segs.forEach(function (g) {
+        if (g.frac <= 0) return;
+        s += '<circle cx="90" cy="90" r="70" fill="none" stroke="' + g.color +
+          '" stroke-width="24" stroke-dasharray="' + (g.frac * C).toFixed(1) + ' ' + C.toFixed(1) +
+          '" stroke-dashoffset="' + (-acc * C).toFixed(1) +
+          '" transform="rotate(-90 90 90)"><title>' + esc(g.label) + ' · ' + fmtTime(g.secs) +
+          ' (' + Math.round(g.frac * 100) + '%)</title></circle>';
+        acc += g.frac;
+      });
+    }
+    s += '<text x="90" y="87" text-anchor="middle" font-size="20" font-weight="800" fill="currentColor">' + fmtTime(totalSecs) + '</text>';
+    s += '<text x="90" y="107" text-anchor="middle" font-size="10" style="fill:var(--muted)">today</text>';
+    return s + '</svg>';
+  }
+
+  function barsHTML(n, goalSecs) {
+    var keys = dateKeys(n);
+    var data = keys.map(function (k) { return { k: k, secs: sumSites(daySites(k)) }; });
+
+    var max = 1800; // at least a 30-minute scale
+    data.forEach(function (d) { max = Math.max(max, d.secs); });
+    var gmax = goalSecs > 0 ? Math.max(max, goalSecs * 1.05) : max;
+    gmax = Math.ceil(gmax / 1800) * 1800; // nice ceiling on 30-min steps
+
+    var grid = [1, 0.75, 0.5, 0.25, 0].map(function (f) {
+      return '<div class="grid-line" style="bottom:' + (f * 100) + '%"><span>' + fmtAxis(gmax * f) + '</span></div>';
+    }).join('');
+
+    var bars = data.map(function (d, i) {
+      var dt = new Date(d.k + 'T00:00:00');
+      var lab = n <= 7 ? WD[dt.getDay()] : String(dt.getDate());
+      var isToday = i === data.length - 1;
+      var h = d.secs > 0 ? Math.max(1.5, (d.secs / gmax) * 100) : 0;
+      return '<div class="bar-col"><div class="bar' + (isToday ? ' today' : '') +
+        '" style="height:' + h.toFixed(1) + '%" title="' + d.k + ' · ' + fmtTime(d.secs) +
+        (isToday ? ' (today)' : '') + '"></div><span class="bar-lab">' + lab + '</span></div>';
+    }).join('');
+
+    var goalLine = (goalSecs > 0 && goalSecs <= gmax)
+      ? '<div class="goal-line" style="bottom:' + ((goalSecs / gmax) * 100).toFixed(1) +
+        '%"><span>goal ' + fmtTime(goalSecs) + '</span></div>'
+      : '';
+
+    return '<div class="barchart">' + grid + '<div class="bars">' + bars + '</div>' + goalLine + '</div>';
+  }
+
+  function heatHTML() {
+    var keys = dateKeys(7);
+    var hours = new Array(24).fill(0);
+    keys.forEach(function (k) {
+      var h = dayHours(k);
+      for (var i = 0; i < 24; i++) hours[i] += (h[i] || 0);
+    });
+    var max = Math.max(60, Math.max.apply(null, hours));
+    var cells = hours.map(function (v, i) {
+      var bg = v > 0 ? 'rgba(99,102,241,' + (0.10 + 0.90 * (v / max)).toFixed(2) + ')' : 'var(--track)';
+      return '<div class="heat-cell" style="background:' + bg + '" title="' + hourLabel(i) +
+        ' · avg ' + fmtTime(v / 7) + '"></div>';
+    }).join('');
+    var labs = '';
+    for (var j = 0; j < 24; j++) labs += '<span>' + (j % 3 === 0 ? hourShort(j) : '') + '</span>';
+    return '<div class="heat">' + cells + '</div><div class="heat-labs">' + labs + '</div>';
+  }
+
+  function sparkHTML(domain) {
+    var k7 = dateKeys(7);
+    var vals = k7.map(function (k) { return daySites(k)[domain] || 0; });
+    var mx = Math.max(60, Math.max.apply(null, vals));
+    var tip = k7.map(function (k, i) { return k.slice(5) + ': ' + fmtTime(vals[i]); }).join('\n');
+    var bars = vals.map(function (v) {
+      return '<i style="height:' + (v > 0 ? Math.max(6, Math.round((v / mx) * 100)) : 2) + '%"></i>';
+    }).join('');
+    return '<div class="spark" title="' + esc(tip) + '">' + bars + '</div>';
+  }
+
+  // ── overview tab ─────────────────────────────────────────────────────────
+
+  function renderOverview() {
+    var body = $('#ov-body');
+    if (!hasData()) { body.innerHTML = emptyHTML(); return; }
+
+    var key = keyOf();
+    var today = daySites(key);
+    var t = sumSites(today);
+    var k7 = dateKeys(7);
+    var k14 = dateKeys(14);
+    var yesterday = sumSites(daySites(k14[12]));
+
+    var entries = Object.keys(today).map(function (d) { return [d, today[d]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+
+    // ── stat cards ──
+    var weekSum = 0;
+    k7.forEach(function (k) { weekSum += sumSites(daySites(k)); });
+
+    var delta;
+    if (yesterday > 0) {
+      var p = ((t - yesterday) / yesterday) * 100;
+      delta = '<div class="d ' + (p > 0 ? 'bad' : 'good') + '">' +
+        (p >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(p)) + '% vs yesterday</div>';
+    } else {
+      delta = '<div class="d muted">' + (t > 0 ? 'first day of tracking' : 'waiting for data') + '</div>';
+    }
+
+    var top = entries[0];
+    var topCat = top ? classifySite(top[0], settings.categoryOverrides) : null;
+
+    var hours = dayHours(key);
+    var peak = -1, peakV = -1;
+    for (var i = 0; i < 24; i++) if (hours[i] > peakV) { peakV = hours[i]; peak = i; }
+
+    var cards =
+      '<div class="cards">' +
+      '<div class="card"><div class="k">Today</div><div class="v">' + fmtTime(t) + '</div>' + delta + '</div>' +
+      '<div class="card"><div class="k">7-day average</div><div class="v">' + fmtTime(weekSum / 7) + '</div><div class="d muted">per day</div></div>' +
+      '<div class="card"><div class="k">Top site today</div><div class="v">' +
+      (top ? '<small>' + top[0] + '</small> · ' + fmtTime(top[1]) : '—') + '</div>' +
+      (topCat ? '<div class="d muted">' + topCat.label + '</div>' : '') + '</div>' +
+      '<div class="card"><div class="k">Peak hour today</div><div class="v">' +
+      (peak >= 0 && peakV >= 60 ? hourLabel(peak) : '—') + '</div>' +
+      (peak >= 0 && peakV >= 60 ? '<div class="d muted">' + fmtTime(peakV) + ' in one hour</div>' : '') + '</div>' +
+      '</div>';
+
+    // ── donut ──
+    var cats = catTotals([key]);
+    var catTotal = 0;
+    cats.forEach(function (c) { catTotal += c.secs; });
+    var top5 = cats.slice(0, 5);
+    var restSecs = catTotal - top5.reduce(function (s, c) { return s + c.secs; }, 0);
+    var segs = top5.map(function (c) {
+      return { label: c.cat.label, color: c.cat.color, secs: c.secs, frac: catTotal > 0 ? c.secs / catTotal : 0 };
+    });
+    if (restSecs > 0 && catTotal > 0) {
+      segs.push({ label: 'Other categories', color: '#64748b', secs: restSecs, frac: restSecs / catTotal });
+    }
+    var legend = segs.map(function (s) {
+      return '<div class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' +
+        '<span class="lname">' + s.label + '</span><span class="ltime">' + fmtTime(s.secs) + '</span>' +
+        '<span class="lpct">' + (catTotal > 0 ? Math.round(s.frac * 100) + '%' : '') + '</span></div>';
+    }).join('');
+
+    var goalSecs = (settings.dailyGoalMinutes || 0) * 60;
+
+    var charts =
+      '<div class="charts-row">' +
+      '<div class="panel"><div class="panel-h"><h3>Today by category</h3></div>' +
+      '<div class="donut-wrap">' + donutHTML(segs, catTotal) + '<div class="legend">' + legend + '</div></div></div>' +
+      '<div class="panel"><div class="panel-h"><h3>Daily trend</h3><div class="seg">' +
+      [7, 14, 30].map(function (n) {
+        return '<button type="button" data-n="' + n + '"' + (n === barCount ? ' class="active"' : '') + '>' + n + 'd</button>';
+      }).join('') +
+      '</div></div>' + barsHTML(barCount, goalSecs) + '</div></div>';
+
+    // ── heatmap ──
+    var heat =
+      '<div class="panel"><div class="panel-h"><h3>When you are online</h3>' +
+      '<div class="heat-legend">less <i style="background:rgba(99,102,241,.15)"></i>' +
+      '<i style="background:rgba(99,102,241,.4)"></i><i style="background:rgba(99,102,241,.7)"></i>' +
+      '<i style="background:rgba(99,102,241,1)"></i> more &nbsp;·&nbsp; 7-day average by hour</div></div>' +
+      heatHTML() + '</div>';
+
+    // ── top sites ──
+    var maxT = entries.length ? entries[0][1] : 0;
+    var topRows = entries.slice(0, 6).map(function (e) {
+      var c = classifySite(e[0], settings.categoryOverrides);
+      var w = maxT > 0 ? Math.max(3, Math.round((e[1] / maxT) * 100)) : 3;
+      return '<div class="trow" data-domain="' + esc(e[0]) + '">' + faviconHTML(e[0]) +
+        '<div class="tname">' + e[0] + '</div>' +
+        '<div class="minibar"><i style="width:' + w + '%; background:' + c.color + '"></i></div>' +
+        '<div class="ttime">' + fmtTime(e[1]) + '</div>' +
+        '<div class="tpct">' + (t > 0 ? Math.round((e[1] / t) * 100) + '%' : '') + '</div></div>';
+    }).join('');
+
+    var topPanel =
+      '<div class="panel"><div class="panel-h"><h3>Top sites · Today</h3>' +
+      '<span class="sub">click a site for details</span></div>' +
+      (topRows || '<div class="empty">Nothing recorded today yet.</div>') + '</div>';
+
+    body.innerHTML = cards + charts + heat + topPanel;
+  }
+
+  // ── sites tab ────────────────────────────────────────────────────────────
+
+  function detailHTML(r) {
+    var k14 = dateKeys(14);
+    var vals = k14.map(function (k) { return daySites(k)[r.d] || 0; });
+    var mx = Math.max(60, Math.max.apply(null, vals));
+    var bars = vals.map(function (v, i) {
+      return '<i style="height:' + (v > 0 ? Math.max(4, (v / mx) * 100) : 0).toFixed(1) +
+        '%" title="' + k14[i] + ' · ' + fmtTime(v) + '"></i>';
+    }).join('');
+    var labs = vals.map(function (_v, i) {
+      var dt = new Date(k14[i] + 'T00:00:00');
+      return '<span>' + (i % 2 === 0 ? dt.getDate() : '') + '</span>';
+    }).join('');
+
+    var cat = classifySite(r.d, settings.categoryOverrides);
+    var auto = classifySite(r.d, null);
+    var current = (settings.categoryOverrides || {})[r.d];
+
+    var catCtl;
+    if (EMBED) {
+      catCtl = catChip(cat); // read-only snapshot
+    } else {
+      var opts = '<option value=""' + (!current ? ' selected' : '') + '>Auto (' + auto.label + ')</option>' +
+        CATEGORIES.map(function (c) {
+          return '<option value="' + c.id + '"' + (current === c.id ? ' selected' : '') + '>' + c.label + '</option>';
+        }).join('');
+      catCtl = '<select data-catfor="' + esc(r.d) + '">' + opts + '</select>';
+    }
+
+    var lim = (settings.siteLimits || {})[r.d];
+    var limitTag = lim
+      ? '<span class="limit-tag' + (r.today >= lim * 60 ? ' over' : '') + '">⏳ ' +
+        fmtCell(r.today) + ' / ' + lim + 'm today</span>'
+      : '<span class="limit-tag">No daily limit</span>';
+
+    return '<div class="srow-detail"><div class="detail-grid">' +
+      '<div class="detail-bars"><div class="db-title">Last 14 days</div>' +
+      '<div class="db-bars">' + bars + '</div><div class="db-labs">' + labs + '</div></div>' +
+      '<div class="detail-meta">' +
+      '<div><label>Category</label>' + catCtl + '</div>' +
+      '<div><label>Daily limit</label>' + limitTag + '</div>' +
+      '</div></div></div>';
+  }
+
+  function renderSitesTable() {
+    var tbl = $('#sitesTable');
+    if (!tbl) return;
+
+    var key = keyOf();
+    var today = daySites(key);
+    var k7 = dateKeys(7);
+
+    var rows = Object.keys(total).filter(function (d) { return total[d] > 0; })
+      .map(function (d) {
+        var weekS = 0;
+        k7.forEach(function (k) { weekS += (daySites(k)[d] || 0); });
+        return { d: d, today: today[d] || 0, week: weekS, all: total[d] };
+      });
+
+    var q = searchText.trim().toLowerCase();
+    var filtered = rows.filter(function (r) {
+      if (q && r.d.indexOf(q) === -1) return false;
+      if (catFilter !== 'all' &&
+        classifySite(r.d, settings.categoryOverrides).id !== catFilter) return false;
+      return true;
+    });
+
+    filtered.sort(function (a, b) {
+      if (sortMode === 'week') return b.week - a.week;
+      if (sortMode === 'all') return b.all - a.all;
+      return b.today - a.today;
+    });
+
+    var maxToday = 0;
+    filtered.forEach(function (r) { maxToday = Math.max(maxToday, r.today); });
+
+    var shown = filtered.slice(0, 60);
+    var rowHtml = shown.map(function (r) {
+      var cat = classifySite(r.d, settings.categoryOverrides);
+      var w = maxToday > 0 ? Math.max(2, Math.round((r.today / maxToday) * 100)) : 2;
+      return '<div class="srow" data-domain="' + esc(r.d) + '">' +
+        '<div class="sitecell">' + faviconHTML(r.d) + '<div class="scell">' + r.d + '</div></div>' +
+        '<div>' + catChip(cat) + '</div>' +
+        '<div class="scell num">' + fmtCell(r.today) + '</div>' +
+        '<div class="scell num">' + fmtCell(r.week) + '</div>' +
+        '<div class="scell num">' + fmtCell(r.all) + '</div>' +
+        '<div><div class="share"><i style="width:' + w + '%; background:' + cat.color + '"></i></div></div>' +
+        '<div>' + sparkHTML(r.d) + '</div>' +
+        '</div>' + (expandedSite === r.d ? detailHTML(r) : '');
+    }).join('');
+
+    var extra = filtered.length > shown.length
+      ? '<p class="footnote">Showing top ' + shown.length + ' of ' + filtered.length + ' sites.</p>'
+      : '<p class="footnote">Tip: click any row to see a 14-day history, change its category, or check its daily limit.</p>';
+
+    tbl.innerHTML =
+      '<div class="stable">' +
+      '<div class="srow-h">' +
+      '<div>Site</div><div>Category</div>' +
+      '<div class="scell" style="text-align:right">Today</div>' +
+      '<div class="scell" style="text-align:right">7 days</div>' +
+      '<div class="scell" style="text-align:right">All time</div>' +
+      '<div>Share today</div><div style="text-align:right">Trend</div>' +
+      '</div>' + (rowHtml ||
+        '<div class="empty">No sites match your filters.</div>') +
+      '</div>' + extra;
+  }
+
+  function renderSites() {
+    var body = $('#sites-body');
+    if (!hasData()) { body.innerHTML = emptyHTML(); return; }
+
+    // keep the search box (and focus) while the user is typing
+    var tbl = $('#sitesTable');
+    var ae = document.activeElement;
+    if (tbl && ae && ae.id === 'siteSearch' && body.contains(ae)) {
+      renderSitesTable();
+      return;
+    }
+
+    var chips = '<span class="chip' + (catFilter === 'all' ? ' active' : '') + '" data-cat="all">All</span>' +
+      CATEGORIES.map(function (c) {
+        return '<span class="chip' + (catFilter === c.id ? ' active' : '') +
+          '" data-cat="' + c.id + '"><i style="background:' + c.color + '"></i>' + c.label + '</span>';
+      }).join('');
+
+    var toolbar =
+      '<div class="toolbar">' +
+      '<input class="search" id="siteSearch" type="text" placeholder="Search sites…" value="' + esc(searchText) + '">' +
+      '<div class="chips">' + chips + '</div>' +
+      '<select class="sortsel" id="sortSel">' +
+      '<option value="today"' + (sortMode === 'today' ? ' selected' : '') + '>Sort: Today</option>' +
+      '<option value="week"' + (sortMode === 'week' ? ' selected' : '') + '>Sort: 7 days</option>' +
+      '<option value="all"' + (sortMode === 'all' ? ' selected' : '') + '>Sort: All time</option>' +
+      '</select></div>';
+
+    body.innerHTML = toolbar + '<div id="sitesTable"></div>';
+    renderSitesTable();
+  }
+
+  // ── insights tab ─────────────────────────────────────────────────────────
+
+  function renderInsights() {
+    var body = $('#ins-body');
+    if (!hasData()) { body.innerHTML = emptyHTML(); return; }
+
+    var k7 = dateKeys(7);
+    var prev7 = dateKeys(14).slice(0, 7);
+    var thisWeek = 0, lastWeek = 0;
+    k7.forEach(function (k) { thisWeek += sumSites(daySites(k)); });
+    prev7.forEach(function (k) { lastWeek += sumSites(daySites(k)); });
+
+    var cards = [];
+
+    // 1 · week over week
+    var s1;
+    if (lastWeek > 0) {
+      var p = ((thisWeek - lastWeek) / lastWeek) * 100;
+      s1 = '<b class="' + (p > 0 ? 'bad' : 'good') + '">' + (p >= 0 ? '+' : '−') +
+        Math.abs(Math.round(p)) + '%</b> vs last week (' + fmtTime(lastWeek) + ')';
+    } else {
+      s1 = thisWeek > 0 ? 'No data for last week to compare' : 'No data yet — keep browsing!';
+    }
+    cards.push(['📅', 'This week (7 days)', fmtTime(thisWeek), s1]);
+
+    // 2 · top category + productivity score
+    var cats = catTotals(k7);
+    if (cats.length) {
+      cards.push(['🏆', 'Top category · 7 days', cats[0].cat.label,
+        fmtTime(cats[0].secs) + ' — ' + cats[0].cat.label.toLowerCase() + ' leads your screen time']);
+    }
+    var prodSecs = 0;
+    cats.forEach(function (c) {
+      if (c.cat.id === 'work' || c.cat.id === 'learning') prodSecs += c.secs;
+    });
+    if (thisWeek > 0) {
+      cards.push(['⚡', 'Productivity score', Math.round((prodSecs / thisWeek) * 100) + '%',
+        'share of Work + Learning in this week\u2019s screen time']);
+    }
+
+    // 3 · peak hour
+    var hours = new Array(24).fill(0);
+    k7.forEach(function (k) {
+      var h = dayHours(k);
+      for (var i = 0; i < 24; i++) hours[i] += (h[i] || 0);
+    });
+    var pk = 0;
+    for (var i2 = 1; i2 < 24; i2++) if (hours[i2] > hours[pk]) pk = i2;
+    if (hours[pk] >= 60) {
+      cards.push(['🌙', 'Peak usage hour', hourLabel(pk) + ' – ' + hourLabel((pk + 1) % 24),
+        'avg ' + fmtTime(hours[pk] / 7) + ' during this hour (7-day average)']);
+    }
+
+    // 4/5 · most increased / reduced site
+    var perSite = {}, perSitePrev = {};
+    k7.forEach(function (k) {
+      var s = daySites(k);
+      for (var d in s) perSite[d] = (perSite[d] || 0) + s[d];
+    });
+    prev7.forEach(function (k) {
+      var s = daySites(k);
+      for (var d2 in s) perSitePrev[d2] = (perSitePrev[d2] || 0) + s[d2];
+    });
+    var inc = null, dec = null;
+    Object.keys(perSite).forEach(function (d) {
+      if (perSitePrev[d] === undefined) return;
+      var diff = perSite[d] - perSitePrev[d];
+      if (diff > 300 && (!inc || diff > inc.diff)) inc = { d: d, diff: diff };
+      if (diff < -300 && (!dec || diff < dec.diff)) dec = { d: d, diff: diff };
+    });
+    if (inc) cards.push(['📈', 'Most increased', inc.d,
+      '<b class="bad">+' + fmtTime(inc.diff) + '</b> more than last week']);
+    if (dec) cards.push(['📉', 'Most reduced', dec.d,
+      '<b class="good">−' + fmtTime(-dec.diff) + '</b> less than last week. Nice!']);
+
+    // 6 · goal streak
+    var goalSecs = (settings.dailyGoalMinutes || 0) * 60;
+    if (goalSecs > 0) {
+      var under = 0;
+      k7.forEach(function (k) { if (sumSites(daySites(k)) <= goalSecs) under++; });
+      cards.push(['🎯', 'Goal streak', under + ' of 7 days',
+        'under your ' + fmtTime(goalSecs) + ' daily goal this week']);
+    }
+
+    // 7 · site count
+    cards.push(['🌐', 'Sites visited', String(Object.keys(perSite).length),
+      'distinct sites in the last 7 days']);
+
+    body.innerHTML = '<div class="icards">' + cards.map(function (c) {
+      return '<div class="icard"><div class="emoji">' + c[0] + '</div><div class="t">' + c[1] +
+        '</div><div class="v">' + c[2] + '</div><div class="s">' + c[3] + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  // ── export / import (extension mode only) ────────────────────────────────
+
+  async function exportData() {
+    var got = await chrome.storage.local.get(['days', 'total', 'settings']);
+    var payload = {
+      exportedAt: new Date().toISOString(),
+      days: got.days,
+      total: got.total,
+      settings: got.settings,
+    };
+    download('screen-time-backup-' + keyOf() + '.json',
+      JSON.stringify(payload, null, 2), 'application/json');
+  }
+
+  function exportCSV() {
+    var lines = ['date,domain,seconds,minutes'];
+    Object.keys(days).sort().forEach(function (k) {
+      var s = daySites(k);
+      Object.keys(s).sort().forEach(function (d) {
+        lines.push(k + ',' + d + ',' + Math.round(s[d]) + ',' + (s[d] / 60).toFixed(1));
+      });
+    });
+    download('screen-time-' + keyOf() + '.csv', lines.join('\n'), 'text/csv');
+  }
+
+  // ★ Web export: one self-contained HTML file with all data embedded —
+  //   host it anywhere (GitHub Pages, Netlify…) and it just works, read-only.
+  async function exportWeb() {
+    flashSaved('Building page…');
+    var html = await (await fetch(chrome.runtime.getURL('dashboard.html'))).text();
+    var catsJs = await (await fetch(chrome.runtime.getURL('categories.js'))).text();
+    var dashJs = await (await fetch(chrome.runtime.getURL('dashboard.js'))).text();
+    var got = await chrome.storage.local.get(['days', 'total', 'settings']);
+
+    var payload = {
+      exportedAt: new Date().toISOString(),
+      days: got.days || {},
+      total: got.total || {},
+      settings: got.settings || {},
+    };
+    var dataScript = '<script>\nwindow.SCREEN_TIME_DATA = ' +
+      JSON.stringify(payload) + ';\n<\/script>\n';
+
+    // NOTE: closing tags are escaped (<\/script>) so this file can be inlined safely
+    html = html
+      .replace('<script src="categories.js"><\/script>', '<script>\n' + catsJs + '\n<\/script>')
+      .replace('<script src="dashboard.js"><\/script>', dataScript + '<script>\n' + dashJs + '\n<\/script>');
+
+    download('index.html', html, 'text/html');
+    flashSaved('index.html ready — host it! 🌍');
+  }
+
+  function armReset(btn, scope) {
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+      if (btn.dataset.armed !== '1') {
+        btn.dataset.armed = '1';
+        btn.classList.add('danger-armed');
+        btn.textContent = scope === 'today' ? 'Sure? Click again' : 'Erase ALL data?';
+        setTimeout(function () {
+          btn.dataset.armed = '0';
+          btn.classList.remove('danger-armed');
+          btn.textContent = scope === 'today' ? 'Reset today' : 'Reset everything';
+        }, 3500);
+        return;
+      }
+      try { await chrome.runtime.sendMessage({ type: 'reset', scope: scope }); } catch (_) {}
+      await loadData();
+      renderAll();
+    });
+  }
+
+  // ── settings tab ─────────────────────────────────────────────────────────
+
+  function renderSettings() {
+    var body = $('#set-body');
+    var limits = settings.siteLimits || {};
+
+    var limRows = Object.keys(limits).map(function (d) {
+      return '<div class="limit-row"><span class="lr-d">' + esc(d) + '</span>' +
+        '<span class="lr-m">' + limits[d] + 'm</span>' +
+        '<button type="button" data-rm="' + esc(d) + '" title="Remove">✕</button></div>';
+    }).join('') || '<p class="footnote">No limits set yet.</p>';
+
+    var tops = Object.keys(total).sort(function (a, b) { return total[b] - total[a]; }).slice(0, 25);
+    var dl = '<datalist id="dlSites">' +
+      tops.map(function (d) { return '<option value="' + esc(d) + '">'; }).join('') + '</datalist>';
+
+    var inputCss = 'background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:9px 12px; font-size:12.5px; outline:none;';
+
+    body.innerHTML =
+      '<div class="set-grid">' +
+
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🎯 Daily goal &amp; alerts</h3></div>' +
+      '<div class="field"><label for="goalInput">Daily screen-time goal (minutes)</label>' +
+      '<input id="goalInput" type="number" min="0" max="1440" step="15" value="' + (settings.dailyGoalMinutes || 0) + '">' +
+      '<div class="hint">0 = goal off. The toolbar badge turns amber at 75% and red once you cross it.</div></div>' +
+      '<div class="switch-row"><span class="sl">Goal &amp; limit alerts</span>' +
+      '<span class="switch"><input id="alertsSwitch" type="checkbox"' + (settings.alerts ? ' checked' : '') +
+      '><span class="knob"></span></span></div>' +
+      '<div class="switch-row"><span class="sl">Daily summary (yesterday recap)</span>' +
+      '<span class="switch"><input id="summarySwitch" type="checkbox"' + (settings.dailySummary ? ' checked' : '') +
+      '><span class="knob"></span></span></div>' +
+      '<div class="hint" style="margin-top:10px">You get one alert per day when the goal or a site limit is crossed, plus a morning recap of yesterday.</div></div>' +
+
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>⏳ Site limits</h3></div>' +
+      '<div class="field"><label>New limit</label>' +
+      '<div class="btn-row" style="align-items:center;flex-wrap:nowrap">' +
+      '<input id="limDomain" type="text" list="dlSites" placeholder="youtube.com" style="flex:1;min-width:130px;' + inputCss + '">' +
+      '<input id="limMins" type="number" min="1" placeholder="min" style="width:78px;' + inputCss + '">' +
+      '<button class="btn primary" id="addLimitBtn" type="button">Add</button></div>' + dl +
+      '<div class="hint">You will be notified once per day when a site crosses its limit.</div></div>' +
+      '<div style="margin-top:6px">' + limRows + '</div></div>' +
+
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🌍 Web dashboard</h3></div>' +
+      '<div class="field"><label for="webUrlInput">Hosted page URL (redirect)</label>' +
+      '<div class="btn-row" style="align-items:center;flex-wrap:nowrap">' +
+      '<input id="webUrlInput" type="text" placeholder="https://your-site.github.io/screen-time-tracker/" style="flex:1;min-width:200px;' + inputCss + '">' +
+      '<button class="btn" id="openWebBtn" type="button">Open ↗</button></div>' +
+      '<div class="hint">Export the web page below, upload <b>index.html</b> to your host (GitHub Pages, Netlify…), then paste its URL here. A 🌐 redirect button appears in the popup.</div></div>' +
+      '<div class="btn-row"><button class="btn primary" id="exportWebBtn" type="button">🌍 Export web page (index.html)</button></div>' +
+      '<div class="hint">Single self-contained HTML file with all your data baked in — works offline, no server needed.</div></div>' +
+
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>🎨 Appearance</h3></div>' +
+      '<div class="btn-row">' +
+      '<button class="btn' + (settings.theme !== 'light' ? ' primary' : '') + '" id="thDark" type="button">🌙 Dark</button>' +
+      '<button class="btn' + (settings.theme === 'light' ? ' primary' : '') + '" id="thLight" type="button">☀️ Light</button></div>' +
+      '<div class="hint" style="margin-top:10px">Applies to the popup and the exported web page.</div></div>' +
+
+      '<div class="panel" style="margin-top:0"><div class="panel-h"><h3>💾 Data</h3></div>' +
+      '<div class="btn-row">' +
+      '<button class="btn" id="exportBtn" type="button">⬇️ Backup JSON</button>' +
+      '<button class="btn" id="exportCsvBtn" type="button">📄 Export CSV</button>' +
+      '<button class="btn" id="importBtn" type="button">⬆️ Import JSON</button>' +
+      '<input type="file" id="importFile" accept="application/json,.json" style="display:none">' +
+      '</div>' +
+      '<div class="btn-row" style="margin-top:10px">' +
+      '<button class="btn" id="resetTodayBtn" type="button">Reset today</button>' +
+      '<button class="btn" id="resetAllBtn" type="button">Reset everything</button></div>' +
+      '<p class="footnote">Everything lives in <code>chrome.storage.local</code> on this device — no accounts, no servers, no analytics. JSON backup can be imported back anytime.</p></div>' +
+      '</div>';
+
+    $('#goalInput').addEventListener('change', async function () {
+      var v = parseInt(this.value, 10);
+      if (isNaN(v)) v = 0;
+      settings.dailyGoalMinutes = Math.max(0, Math.min(1440, v));
+      await saveSettings();
+    });
+
+    $('#alertsSwitch').addEventListener('change', async function () {
+      settings.alerts = this.checked;
+      await saveSettings();
+    });
+
+    $('#summarySwitch').addEventListener('change', async function () {
+      settings.dailySummary = this.checked;
+      await saveSettings();
+    });
+
+    $('#addLimitBtn').addEventListener('click', async function () {
+      var d = ($('#limDomain').value || '').trim().toLowerCase().replace(/^www\./, '');
+      var m = parseInt($('#limMins').value, 10);
+      if (!d || !(m > 0)) return;
+      settings.siteLimits = Object.assign({}, settings.siteLimits);
+      settings.siteLimits[d] = m;
+      await saveSettings();
+      renderSettings();
+    });
+
+    var rms = body.querySelectorAll('button[data-rm]');
+    Array.prototype.forEach.call(rms, function (b) {
+      b.addEventListener('click', async function () {
+        settings.siteLimits = Object.assign({}, settings.siteLimits);
+        delete settings.siteLimits[b.dataset.rm];
+        await saveSettings();
+        renderSettings();
+      });
+    });
+
+    $('#webUrlInput').addEventListener('change', async function () {
+      settings.webUrl = this.value.trim();
+      await saveSettings();
+    });
+
+    $('#openWebBtn').addEventListener('click', function () {
+      if (settings.webUrl) chrome.tabs.create({ url: settings.webUrl });
+      else flashSaved('Paste a URL first');
+    });
+
+    $('#exportWebBtn').addEventListener('click', function () { exportWeb(); });
+
+    $('#thDark').addEventListener('click', function () { setTheme('dark'); });
+    $('#thLight').addEventListener('click', function () { setTheme('light'); });
+
+    $('#exportBtn').addEventListener('click', exportData);
+    $('#exportCsvBtn').addEventListener('click', exportCSV);
+
+    $('#importBtn').addEventListener('click', function () { $('#importFile').click(); });
+    $('#importFile').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          var data = JSON.parse(reader.result);
+          if (!data || typeof data !== 'object' || (!data.days && !data.total)) {
+            flashSaved('Invalid backup file');
+            return;
+          }
+          await chrome.runtime.sendMessage({
+            type: 'import',
+            days: data.days || {},
+            total: data.total || {},
+            settings: data.settings,
+          });
+          flashSaved('Imported ✓');
+          setTimeout(async function () { await loadData(); renderAll(); }, 400);
+        } catch (_) {
+          flashSaved('Import failed');
+        }
+      };
+      reader.readAsText(f);
+      this.value = '';
+    });
+
+    armReset($('#resetTodayBtn'), 'today');
+    armReset($('#resetAllBtn'), 'all');
+  }
+
+  function renderSettingsMaybe() {
+    var sb = $('#set-body');
+    var ae = document.activeElement;
+    if (sb && ae && sb.contains(ae) && ae.tagName === 'INPUT') {
+      settingsDirty = true; // re-render when the input loses focus
+      return;
+    }
+    renderSettings();
+  }
+
+  // ── tabs ─────────────────────────────────────────────────────────────────
+
+  function setTab(t) {
+    if (EMBED && t === 'settings') t = 'overview';
+    activeTab = t;
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+      b.classList.toggle('active', b.dataset.tab === t);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (s) {
+      s.classList.toggle('active', s.id === 'tab-' + t);
+    });
+    $('#topTitle').textContent = TITLES[t] || t;
+    renderActive();
+  }
+
+  function renderActive() {
+    if (activeTab === 'overview') renderOverview();
+    else if (activeTab === 'sites') renderSites();
+    else if (activeTab === 'insights') renderInsights();
+    else renderSettingsMaybe();
+  }
+
+  function renderAll() {
+    renderOverview();
+    renderSites();
+    renderInsights();
+    if (activeTab === 'settings') renderSettingsMaybe();
+  }
+
+  // ── events ───────────────────────────────────────────────────────────────
+
+  function wireEvents() {
+    // sidebar nav
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+      b.addEventListener('click', function () { setTab(b.dataset.tab); });
+    });
+    $('#themeBtn').addEventListener('click', function () {
+      setTheme(settings.theme === 'light' ? 'dark' : 'light');
+    });
+
+    // overview: range buttons + click-through to sites
+    $('#ov-body').addEventListener('click', function (e) {
+      var segBtn = e.target.closest('button[data-n]');
+      if (segBtn) {
+        barCount = parseInt(segBtn.dataset.n, 10);
+        renderOverview();
+        return;
+      }
+      var trow = e.target.closest('.trow');
+      if (trow && trow.dataset.domain) {
+        expandedSite = trow.dataset.domain;
+        setTab('sites');
+      }
+    });
+
+    // sites: search / filters / sort / expand / category change
+    $('#sites-body').addEventListener('input', function (e) {
+      if (e.target.id === 'siteSearch') {
+        searchText = e.target.value;
+        renderSitesTable();
+      }
+    });
+    $('#sites-body').addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip[data-cat]');
+      if (chip) {
+        catFilter = chip.dataset.cat;
+        renderSites();
+        return;
+      }
+      if (e.target.closest('select')) return;
+      var row = e.target.closest('.srow');
+      if (row && row.dataset.domain) {
+        expandedSite = (expandedSite === row.dataset.domain) ? null : row.dataset.domain;
+        renderSitesTable();
+      }
+    });
+    $('#sites-body').addEventListener('change', function (e) {
+      if (e.target.id === 'sortSel') {
+        sortMode = e.target.value;
+        renderSites();
+        return;
+      }
+      var sel = e.target.closest('select[data-catfor]');
+      if (sel) {
+        var d = sel.dataset.catfor;
+        var ov = Object.assign({}, settings.categoryOverrides || {});
+        if (sel.value) ov[d] = sel.value; else delete ov[d];
+        settings.categoryOverrides = ov;
+        saveSettings().then(renderAll);
+      }
+    });
+
+    // settings: re-render once the user stops typing (storage ticks)
+    $('#set-body').addEventListener('focusout', function () {
+      setTimeout(function () {
+        var sb = $('#set-body');
+        var ae = document.activeElement;
+        if (settingsDirty && !(sb.contains(ae) && ae.tagName === 'INPUT')) {
+          settingsDirty = false;
+          renderSettings();
+        }
+      }, 60);
+    });
+
+    // live updates from the service worker (once a minute)
+    if (!EMBED) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (!changes.days && !changes.total && !changes.settings) return;
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(function () {
+          loadData().then(renderAll);
+        }, 300);
+      });
+    }
+  }
+
+  // ── init ─────────────────────────────────────────────────────────────────
+
+  $('#topDate').textContent = new Date().toLocaleDateString(undefined, {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  if (EMBED) {
+    // snapshot mode: hide editing UI, show provenance
+    var setNav = document.querySelector('.nav-btn[data-tab="settings"]');
+    if (setNav) setNav.style.display = 'none';
+    var when = window.SCREEN_TIME_DATA.exportedAt
+      ? new Date(window.SCREEN_TIME_DATA.exportedAt) : new Date();
+    $('#topDate').textContent = 'Snapshot · ' +
+      when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    var sn = document.querySelector('.side-note');
+    if (sn) sn.innerHTML = '📸 Read-only snapshot<br>' + when.toLocaleString() +
+      '<br>Exported from the<br>Screen Time Tracker extension';
+  }
+
+  var toast = document.createElement('div');
+  toast.id = 'toast';
+  toast.className = 'saved-flash toast';
+  toast.textContent = 'Saved ✓';
+  document.body.appendChild(toast);
+
+  wireEvents();
+  loadData().then(renderAll);
+})();
+
+</script>
+
+</body>
+</html>
